@@ -7,115 +7,115 @@ set -u
 
 version="0.58b"
 # bashforth - forth interpreter in bash
-# v0.03 20030219 Speuler added bool, logical, constants, fixed nip and other
-# v0.04 20030219 Speuler added ?dup, fixed 0branch
-# v0.05 20030220 Speuler reviewed auto-inc/dec addressing modi, fixed 0branch again
-# v0.06 20030220 Speuler constants redone
-# v0.07 20030220 Speuler added lshift rshift
-# v0.08 20030220 Speuler emit outputs correctly decimal numbers on stack. thanks dufflebunk
-# v0.09 20030220 Speuler simplified asc table building.
-# v0.10 20030220 Speuler accept works. uses external command  cut  right now.
-# v0.11 20030220 Speuler added pad c@ @ c! ! count
-# v0.12 20030221 Speuler key and accept return asciis, rather than chars.
+# v0.03 20030219 ls added bool, logical, constants, fixed nip and other
+# v0.04 20030219 ls added ?dup, fixed 0branch
+# v0.05 20030220 ls reviewed auto-inc/dec addressing modi, fixed 0branch again
+# v0.06 20030220 ls constants redone
+# v0.07 20030220 ls added lshift rshift
+# v0.08 20030220 ls emit outputs correctly decimal numbers on stack. thanks dufflebunk
+# v0.09 20030220 ls simplified asc table building.
+# v0.10 20030220 ls accept works. uses external command  cut  right now.
+# v0.11 20030220 ls added pad c@ @ c! ! count
+# v0.12 20030221 ls key and accept return asciis, rather than chars.
 #                        emit, type, find work on asciis
-# v0.13 20030221 Speuler word,  input stream parser, query, interpret, quit added
+# v0.13 20030221 ls word,  input stream parser, query, interpret, quit added
 #                        this enables multiple words on input line
-# v0.14 20030221 Speuler ?number added, extended interpreter. numbers work, but
+# v0.14 20030221 ls ?number added, extended interpreter. numbers work, but
 #                         only decimal
-# v0.15 20030221 Speuler added deferred words, improved error handler. first
+# v0.15 20030221 ls added deferred words, improved error handler. first
 #                        defining words. creation of variables works.
-# v0.16 20030221 Speuler immediate, colon definitions work
-# v0.17 20030222 Speuler improved prompt, added ' and ['], compiles numbers
+# v0.16 20030221 ls immediate, colon definitions work
+# v0.17 20030222 ls improved prompt, added ' and ['], compiles numbers
 #                        find returns the word#, can get to xt, name and header flags.
 #                        added 2*, 2/, negate, begin..again  begin..until
-# v0.18 20030222 Speuler if..then, if..else..then begin..while..repeat work. structure is tested
-# v0.19 20030222 Speuler do..loop, i, j, negative numbers input, commented out debug output
+# v0.18 20030222 ls if..then, if..else..then begin..while..repeat work. structure is tested
+# v0.19 20030222 ls do..loop, i, j, negative numbers input, commented out debug output
 #                        from virtual machine for 50% speed improvement
-# v0.20 20030223 Speuler added  does>  2+
-# v0.21 20030223 Speuler hide, reveal, constant. started redoing error handler. loops broken
-# v0.22 20030223 Speuler loops fixed. ?comp
-# v0.23 20030223 Speuler added  catch throw ?exec  . fixed key (space). ctrl chars return asc of space too.
-# v0.24 20030224 Speuler added  ." , s" , $, .(      fixed bug in word .  tests stack underflow
-# v0.26 20030225 Speuler added s( \ (
-# v0.27 20030225 Speuler errorhandler through throw. top level error handler catches gracefully
-# v0.28 20030225 Speuler speed increase of about 50 %
-# v0.29 20030225 Speuler exit, outputs asciis 0...31, speeded up compares, improved move
-# v0.30 20030225 Speuler .. outputs decimal (quick), . respects base (slower), number input respects base
+# v0.20 20030223 ls added  does>  2+
+# v0.21 20030223 ls hide, reveal, constant. started redoing error handler. loops broken
+# v0.22 20030223 ls loops fixed. ?comp
+# v0.23 20030223 ls added  catch throw ?exec  . fixed key (space). ctrl chars return asc of space too.
+# v0.24 20030224 ls added  ." , s" , $, .(      fixed bug in word .  tests stack underflow
+# v0.26 20030225 ls added s( \ (
+# v0.27 20030225 ls errorhandler through throw. top level error handler catches gracefully
+# v0.28 20030225 ls speed increase of about 50 %
+# v0.29 20030225 ls exit, outputs asciis 0...31, speeded up compares, improved move
+# v0.30 20030225 ls .. outputs decimal (quick), . respects base (slower), number input respects base
 #                        added hex, decimal, binary
-# v0.31 20030226 Speuler pictured number output added ( <# # #s #> #>type sign )
-# v0.31a20030226 Speuler hold (forgotten, pictured number output), rot, -rot
-# v0.32 20030226 Speuler system (shells to command), pack ( a n -- x ) packs string to string on tos,
+# v0.31 20030226 ls pictured number output added ( <# # #s #> #>type sign )
+# v0.31a20030226 ls hold (forgotten, pictured number output), rot, -rot
+# v0.32 20030226 ls system (shells to command), pack ( a n -- x ) packs string to string on tos,
 #                        unpack (explodes tos string to memory), cleaned up messy accept and name
-# v0.33 20030226 Speuler added bash, fixed does>, started include.  sent out for does> fix
-# v0.34 20030226 Speuler first rough version of include works. no nesting yet. thanks deltab for getting the source into vars
-# v0.35 20030226 Speuler fixed backslash bug in include.
+# v0.33 20030226 ls added bash, fixed does>, started include.  sent out for does> fix
+# v0.34 20030226 ls first rough version of include works. no nesting yet. thanks deltab for getting the source into vars
+# v0.35 20030226 ls fixed backslash bug in include.
 # this is for the time being the last version of bashforth. i'm now busy working on a target translator which allows to generate source
 # for several languages, including bash
-# v0.36 20030305 Speuler added pick, found a way to split input stream into chars w/o requiring external cut, as a result
+# v0.36 20030305 ls added pick, found a way to split input stream into chars w/o requiring external cut, as a result
 #                        including source files works much quicker. bashforth is "pure" now.
-# v0.37 20030309 Speuler number output with . doesn't complain about zero-string stack elements.
+# v0.37 20030309 ls number output with . doesn't complain about zero-string stack elements.
 #                        stack order  reversed.  added */  */mod  ?do  leave . speeded up type
-# v0.37a20030310 Speuler fixed include, broken in 0.37 because of changed do
-# v0.37b20030310 Speuler fixed include again. * in source was expanded to file list
-# v0.37c20030310 Speuler fixed ." which had cr appended
-# v0.38 20030310 Speuler added skip, scan, tuck, compare
-# v0.39 20030310 Speuler added min max abs fill doc,   abort throws,  removed ?exec
-# v0.40 20030311 Speuler bugfix for 2.05a, hopefully for 2.04 too. incompatible with 2.03
-# v0.41 20030311 Speuler redone doc. this implementation writes line number to word body. added rnd +! cell cells chars
-# v0.42 20030311 Speuler more consistent use of addressing modes, added
+# v0.37a20030310 ls fixed include, broken in 0.37 because of changed do
+# v0.37b20030310 ls fixed include again. * in source was expanded to file list
+# v0.37c20030310 ls fixed ." which had cr appended
+# v0.38 20030310 ls added skip, scan, tuck, compare
+# v0.39 20030310 ls added min max abs fill doc,   abort throws,  removed ?exec
+# v0.40 20030311 ls bugfix for 2.05a, hopefully for 2.04 too. incompatible with 2.03
+# v0.41 20030311 ls redone doc. this implementation writes line number to word body. added rnd +! cell cells chars
+# v0.42 20030311 ls more consistent use of addressing modes, added
 #                date&time.fixed negative number big introduced with .40
-# v0.42a20030313 Speuler changed email address. verified function on bash 2.04. thanks, stepan
-# v0.42b20030315 Speuler fixed sign bug, result of v0.40, added >name
-# v0.43 20030316 Speuler added .name, roll, improved locate and >name, last points now to cfa of last word
-# v0.44 20030316 Speuler added cell+ char +loop ?leave **
-# v0.45 20030316 Speuler added 2>r 2r>, cleaned up code, speeded up some words (type, #, words)
-# v0.46 20030316 Speuler added literal, compiling, addressing modes optimizations
-# v0.46a20030316 Speuler bugfix addressing modes v0.46. untested with bash 2.04
-# v0.47 20030319 Speuler added black yellow green red blue magenta cyan white fg bg colors
-# v0.47a20030320 Speuler added normal bold underscore reverse attr@ attr!
-# v0.47b20030320 Speuler added at home
-# v0.47c20030325 Speuler added ?at (doesn't work yet) number /string right$ left$
-# v0.48 20030325 Speuler added system2 2swap dup$ drop$ depth$ 2dup$ swap$ over$ nip$ rot$ push$ pop$ append$
+# v0.42a20030313 ls changed email address. verified function on bash 2.04. thanks, stepan
+# v0.42b20030315 ls fixed sign bug, result of v0.40, added >name
+# v0.43 20030316 ls added .name, roll, improved locate and >name, last points now to cfa of last word
+# v0.44 20030316 ls added cell+ char +loop ?leave **
+# v0.45 20030316 ls added 2>r 2r>, cleaned up code, speeded up some words (type, #, words)
+# v0.46 20030316 ls added literal, compiling, addressing modes optimizations
+# v0.46a20030316 ls bugfix addressing modes v0.46. untested with bash 2.04
+# v0.47 20030319 ls added black yellow green red blue magenta cyan white fg bg colors
+# v0.47a20030320 ls added normal bold underscore reverse attr@ attr!
+# v0.47b20030320 ls added at home
+# v0.47c20030325 ls added ?at (doesn't work yet) number /string right$ left$
+# v0.48 20030325 ls added system2 2swap dup$ drop$ depth$ 2dup$ swap$ over$ nip$ rot$ push$ pop$ append$
 #                        modified left$ right$, these work on stop string stack element now
 #                        modified doc to show word description, besides stack effect. optimized does>
-# v0.48a20030325 Speuler added/modified descriptions
-# v0.48b20030526 Speuler replaced hide/reveal against versions by h-peter recktenwald. these ones seem
+# v0.48a20030325 ls added/modified descriptions
+# v0.48b20030526 ls replaced hide/reveal against versions by h-peter recktenwald. these ones seem
 #                        to be less sensitive for the used version of bash
-# v0.48c20030527 Speuler bug fix "hold", bug discovered by h-peter recktenwald
-# v0.48d20030530 Speuler merged with h-peter recktenwald's patches: info, hold, immediate
+# v0.48c20030527 ls bug fix "hold", bug discovered by h-peter recktenwald
+# v0.48d20030530 ls merged with h-peter recktenwald's patches: info, hold, immediate
 #                        hi-level . is about 50 % slower than former primitive version
 #                        (output 1000 number 7.5 rather than 4.7 seconds now)
-# v0.48e20030808 Speuler attempted fix of ?number, number and * for bash v2.04 on BEOS
-# v0.49 20030809 Speuler fixed time&date, broken after 2.04 fix in 0.48e
-# v0.49a20030809 Speuler fixed loop +loop for 2.04
-# v0.49b20030818 Speuler found a better fix for time&date
-# v0.49c20031019 Speuler fixed : foo ." *" ;  bug which displayed current directory
-# v0.49d20031019 Speuler added for .. next, compatible with i j  , added spaces.
+# v0.48e20030808 ls attempted fix of ?number, number and * for bash v2.04 on BEOS
+# v0.49 20030809 ls fixed time&date, broken after 2.04 fix in 0.48e
+# v0.49a20030809 ls fixed loop +loop for 2.04
+# v0.49b20030818 ls found a better fix for time&date
+# v0.49c20031019 ls fixed : foo ." *" ;  bug which displayed current directory
+# v0.49d20031019 ls added for .. next, compatible with i j  , added spaces.
 #                        made count tolerant for non-initialized memory locations
-# v0.49e20031019 Speuler attempt to include nonexisting file throws -38
-# 0.50  20031028 Speuler added see  (does not decompile, shows script source instead)
-# 0.50a 20040101 Speuler fixed : $structured, not structured in until
-# 0.50b 20040928 Speuler optional doc <word> uses sed rather than tail - recently tail args were changed.
-# 0.51  20041004 Speuler added 2@ and 2!, suggested by Antonio Maschio
-# 0.52  20041116 Speuler slow (1sec) version of key?, added secs and epoche
-# 0.52a 20041123 Speuler can emit ascii <32 correctly
-# 0.53  20041217 Speuler ***STACK EFFECT OF 'WORD' HAS CHANGED***  previously ( c -- a n ), it is now ( c -- cstring ), with string at HERE
+# v0.49e20031019 ls attempt to include nonexisting file throws -38
+# 0.50  20031028 ls added see  (does not decompile, shows script source instead)
+# 0.50a 20040101 ls fixed : $structured, not structured in until
+# 0.50b 20040928 ls optional doc <word> uses sed rather than tail - recently tail args were changed.
+# 0.51  20041004 ls added 2@ and 2!, suggested by Antonio Maschio
+# 0.52  20041116 ls slow (1sec) version of key?, added secs and epoche
+# 0.52a 20041123 ls can emit ascii <32 correctly
+# 0.53  20041217 ls ***STACK EFFECT OF 'WORD' HAS CHANGED***  previously ( c -- a n ), it is now ( c -- cstring ), with string at HERE
 #                        previous a was pointing into input stream. STREAM was added, providing function of former WORD. new WORD uses STREAM.
 #                        added :noname  . bugfix compare .
-# 0.53a 20041220 Speuler trapped Ctrl-C: warm start
-# 0.53b 20041220 Speuler added >body body>
-# 0.53c 20041222 Speuler include appends .bashforth extension and retries if file not found
-# 0.54  20050119 Speuler fixed bug in move
-# 0.54a 20050222 Speuler added ?
-# 0.54b 20050331 Speuler div/0 exception
-# 0.55  20060314 Speuler unhandled exceptions quit, not warmstart, leaving radix untouched
-# 0.55a 20061003 Speuler removed unnecessary cat in see
-# 0.55b 20071220 Bushmills reversed logic in key?
+# 0.53a 20041220 ls trapped Ctrl-C: warm start
+# 0.53b 20041220 ls added >body body>
+# 0.53c 20041222 ls include appends .bashforth extension and retries if file not found
+# 0.54  20050119 ls fixed bug in move
+# 0.54a 20050222 ls added ?
+# 0.54b 20050331 ls div/0 exception
+# 0.55  20060314 ls unhandled exceptions quit, not warmstart, leaving radix untouched
+# 0.55a 20061003 ls removed unnecessary cat in see
+# 0.55b 20071220 ls reversed logic in key?
 #                changed comparison against empty string to -z test in exception and 2 other
 #                speeded up by using [[ or (( instead of [
 #                simplified logic here and there
-# 0.55c20071223 Bushmills exception accepts literal
-# 0.56 20071229 Bushmills line numbers (for doc and see) dont't require info #LINENO per word anymore
+# 0.55c20071223 ls exception accepts literal
+# 0.56 20071229 ls line numbers (for doc and see) dont't require info #LINENO per word anymore
 #                        changed all function foo { } to  foo() { }
 #                        passed command line is executed
 #                        string stack underflow detected
@@ -123,7 +123,7 @@ version="0.58b"
 #                        fixed bug in include
 #                        string stack operators testing for underflow
 #                        first mac debian package
-# 0.56a 20071231 Bushmills fix in key (returns ascii for space now)
+# 0.56a 20071231 ls fix in key (returns ascii for space now)
 #                        added nanoseconds, time (measures execution time)
 #                        made distance between HERE and PAD a config variable: PADAWAY
 #                        tib size configurable too
@@ -133,31 +133,31 @@ version="0.58b"
 #                        using printf instead of echo
 #                        misc small speedups (or rather, removed a few slowdowns)
 # 0.56b intermediate testing speed improvements
-# 0.56c 20080114 Bushmills added control characters in output ascii table
+# 0.56c 20080114 ls added control characters in output ascii table
 #                        using (( cond )) && action where appropriate
 #			 changing spacing to accommodate fte syntax highlighting better
 #			 some more arithmetic optimisations
-# 0.57 20091005 Bushmills  key?, needs bash 4, waits 1ms. single char buffer,
+# 0.57 20091005 ls  key?, needs bash 4, waits 1ms. single char buffer,
 #                        read by key?, used by key and accept.
-# 0.57a 20101022 Bushmills fixed bug in (s") which must have slipped into with
+# 0.57a 20101022 ls fixed bug in (s") which must have slipped into with
 #                          a recent version
 #			slight optimisation of abs
-# 0.57b 20101101 Bushmills added env, removed "upload" handling, which went into a source file by the same name.
+# 0.57b 20101101 ls added env, removed "upload" handling, which went into a source file by the same name.
 #                          renamed "timestamp" to "epoche"
 #                          renamed "meerge$" to "append$"
 #			   attempts to source ~/.bashforthrc, use to set variables:
 #                              sources=/path/to/sourcefiles     # "include" reads source files from that dir,
 #                                                               # and defaults to current directory if unset.
 #                          added "type$"
-# 0.57c 20101112 Bushmills simplified exception, and some style improvements sprinkled all over the code
+# 0.57c 20101112 ls simplified exception, and some style improvements sprinkled all over the code
 #                          user interrupt (ctrl-c) improved
-# 0.57d 20101127 Bushmills removed load and loadfrom. reversed logic on -z string tests.
+# 0.57d 20101127 ls removed load and loadfrom. reversed logic on -z string tests.
 #                          removed -n from string tests.
-# 0.58  20101220 Bushmills replaced right$. simpler, shorter, faster
+# 0.58  20101220 ls replaced right$. simpler, shorter, faster
 #			   changed result generation of key?
 #                          bug fix number - may have another, dropping sign with hex -ff
-# 0.58a  20110819 Bushmills fixed bug with multiple consecutive revealheader 
-# 0.58b  20120312 Bushmills multi line compound arithmetic expressions problem with bash 4.2-1 at hash
+# 0.58a  20110819 ls fixed bug with multiple consecutive revealheader 
+# 0.58b  20120312 ls multi line compound arithmetic expressions problem with bash 4.2-1 at hash
 
 
 #
