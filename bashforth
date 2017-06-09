@@ -288,7 +288,7 @@ declare -ri smudgebit=2                    	# hide/reveal headers
 
 # --------------- build decimal>ascii lookup table for emit ----------------
 asc=()
-for i in {0..255}; do
+for i in {1..255}; do
    asc[i]=$(echo -en "\x$(printf %x $i)")  # ascii 0-255
 done
 
@@ -779,7 +779,7 @@ code execute execute
 execute() {  
 	w=$tos
 	tos=${s[sp--]}  
-	${m[w++]]}
+	${m[w++]}
 }
 
 
