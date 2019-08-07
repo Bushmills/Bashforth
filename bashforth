@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.59"
+version="0.59a"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -160,8 +160,8 @@ version="0.59"
 # 0.58b  20120312 ls multi line compound arithmetic expressions problem with bash 4.2-1 at hash
 # 0.58c  20170609 ls An execution problem with bash 4.4 due to syntax error was fixed. 
 # 0.59   20190806 ls uses $EPOCHSECONDS instead of $(date +%s) for epoche when running under bash 5+
+# 0.59a  20190807 ls changed !((...)) to ! ((...)) in compare to pacify shellcheck
 
-#
 #   known bugs:
 #       catch:   doesn't return the thrown value correctly sometimes
 #       include: max line length in source files isn't checked against TIBSIZE
@@ -2071,7 +2071,7 @@ compare() {             # n2 in tos
 			temp2=-1
 		fi
 		compare1
-		if !((tos)); then
+		if ! ((tos)); then
 			tos=$temp2
 		fi
 	fi
