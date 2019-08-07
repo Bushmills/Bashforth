@@ -290,7 +290,7 @@ declare -ri smudgebit=2                    	# hide/reveal headers
 # --------------- build decimal>ascii lookup table for emit ----------------
 asc=()
 for i in {1..255}; do
-   asc[i]=$(echo -en "\x$(printf %x $i)")  # ascii 0-255
+   asc[i]=$(echo -en "\\x$(printf %x $i)")  # ascii 0-255
 done
 
 
@@ -323,9 +323,9 @@ compile() {
 
 transient code
 code()  {
-   let $1=$dp
+   (( $1 = dp ))
    shift
-   m[dp++]="$@"
+   m[dp++]="$*"
 }
 
 
@@ -338,7 +338,7 @@ dovar()   {
 
 transient var
 var() {
-   let $1=$dp
+   (( $1 = dp ))
    compile dovar 0
 }
 
@@ -376,14 +376,14 @@ revealheader() {
 
 transient semicolon
 semicolon() {
-   compile $unnest
+   compile "$unnest"
    reveal
 }
 
 
 transient colon
 colon()  {
-   let $1=$dp
+   (( $1 = dp ))
    shift 1
    compile nest
    compile "$*"
@@ -400,9 +400,9 @@ doconst() {
 
 transient constant
 constant() {
-   let $1=$dp
+   (( $1 = dp ))
    shift
-   compile doconst $1
+   compile doconst "$1"
 }
 
 
@@ -411,7 +411,7 @@ dodefer() {  ip=$w; }
 
 transient defer
 defer() {
-   let $1=$dp
+   (( $1 = dp ))
    compile dodefer 0
 }
 
@@ -1541,7 +1541,7 @@ emit() {
 revealheader "space"
 code space space
 space() { 
-	printf '%1s'
+	printf '%1s' " "
 }
 
 
@@ -1638,7 +1638,7 @@ revealheader "accept"
 code accept accept
 accept() {
 	printf "%s$keybuf"
-	read -ersn $tos buffer
+	read -ersn "$tos" buffer
 	tos="${keybuf}${buffer}"
 	keybuf=""
 	swap
@@ -1684,7 +1684,7 @@ prompt() {
       for ((i=sp-s0; i; i--)); do
          printf '%s' "."
       done
-      printf '%b' "\n"
+      printf '%b' "\\n"
    fi
 }
 
@@ -2062,7 +2062,7 @@ compare() {             # n2 in tos
 	dest=${s[sp--]}    
 	temp=${s[sp--]}    
 	source=${s[sp--]} 
-	if [[ $temp = $tos ]]; then
+	if [[ "$temp" = "$tos" ]]; then
 		compare1
 	else
 		temp2=1
@@ -2140,7 +2140,7 @@ slashstring()  {
 	if ((tos<temp)); then
 		temp=$tos
 	fi
-	((s[sp]+=temp, tos-=$temp))
+	((s[sp]+=temp, tos-=temp))
 }
 
 
@@ -2335,8 +2335,8 @@ leftstr()  {
    if ((!ssp)); then
       tos=-65; throw
    fi
-   if (($tos<0)); then
-      if (((tos+=${#stos})<0)); then
+   if (( tos < 0 )); then
+      if ((( tos += ${#stos})<0 )); then
          tos=0
       fi
    fi
@@ -2478,7 +2478,7 @@ code exception exception
 exception() {
    local message="caught $tos"
    ((tos<0)) && message="${throw[-tos]:-$message}"
-   printf '%s%b\n' "$message"
+   printf '%s\n' "$message"
    if ((proceed)); then
       ip=$proceed
       start
