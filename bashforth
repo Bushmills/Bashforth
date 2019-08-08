@@ -3334,7 +3334,7 @@ code bg bg
 bg() {
   ((tos&=7 ,
     attributes&=-241,
-    attributes|=(tos "<<" 4)))       # quoted to help joe syntax highlighting
+    attributes|=(tos << 4)))       # quoted to help joe syntax highlighting
     printf '%b' "\e[4${tos}m"
     tos=${s[sp--]}
 }
@@ -3635,7 +3635,7 @@ done
 
 set +u
 [[ -f ~/.bashforthrc ]] && source ~/.bashforthrc 
-: ${sources:=.}
+: "${sources:=.}"
 if [[ -f "$sources/$1" ]]; then
    COMMANDLINE="include $*"
 else
