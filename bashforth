@@ -167,6 +167,8 @@ version="0.59a"
 #       include: max line length in source files isn't checked against TIBSIZE
 #       ctrl-c:  can't catch ctrl-c
 #       load:    can't load a saved system
+#   bash 4.4 causes error abort.
+
 
 
 # global variables:
@@ -245,7 +247,7 @@ EDITOR=sensible-editor
 
 
 
-ctrl-c() { 
+ctrl-c() {
    tos=-28
    ip=$warm
    printf '%s\n' " ${throw[-tos]}"
@@ -313,7 +315,7 @@ transient transient
 
 transient compile
 compile() {
-   for nextword in $@
+   for nextword in $*
    do
       m[dp++]="${nextword}"
    done
@@ -331,8 +333,8 @@ code()  {
 
 
 dovar()   {
-   s[++sp]=$tos
-   tos=$w
+   s[++sp]="$tos"
+   tos="$w"
 }
 
 
@@ -600,7 +602,7 @@ lit() {
 
 revealheader "pack"
 code pack pack
-pack() {  
+pack() {
    i=$tos
    temp=${s[sp--]}
    unset tos
@@ -610,7 +612,7 @@ pack() {
 }
 
 
-#pack() {  
+#pack() {
 #   temp="${s[sp--]}"
 #   temp2=$tos
 #   tos="$(printf '\x0' $(printf '%x' "${m[@]:temp:temp2}"))"
@@ -665,9 +667,9 @@ dodotquote() {
 revealheader "(for)"
 code dofor dofor
 dofor() {
-   r[++rp]=$tos  
-   r[++rp]=$tos  
-   tos=${s[sp--]} 
+   r[++rp]=$tos
+   r[++rp]=$tos
+   tos=${s[sp--]}
    ((ip++))
 }
 
@@ -690,7 +692,7 @@ donext() {
 # ( limit start -- ) run time word - to be compiled by do
 revealheader "(do)"
 code dodo dodo
-dodo() { 
+dodo() {
 	r[++rp]=${s[sp--]}
 	r[++rp]=$tos
 	((ip++))
@@ -708,7 +710,7 @@ doqdo() {
       ((ip+=m[ip]))
    else
       r[++rp]=${s[sp--]}
-      r[++rp]=$tos  
+      r[++rp]=$tos
       ((ip++))
    fi
    tos=${s[sp--]}
@@ -719,9 +721,9 @@ doqdo() {
 # ( -- ) run time word - to be compiled by leave
 revealheader "(leave)"
 code doleave doleave
-doleave() {  
+doleave() {
 	((rp-=2))
-	ip=${m[ip]}  
+	ip=${m[ip]}
 	((ip+=m[ip]))
 }
 
@@ -777,9 +779,9 @@ doplusloop() {
 # ( ? xt -- ? )
 revealheader "execute"
 code execute execute
-execute() {  
+execute() {
 	w=$tos
-	tos=${s[sp--]}  
+	tos=${s[sp--]}
 	${m[w++]}
 }
 
@@ -845,7 +847,7 @@ drop() {
 # ( x1 x2 -- ) discard top two stack elements
 revealheader "2drop"
 code drop2 drop2
-drop2() {  
+drop2() {
 	((sp--))
 	tos=${s[sp--]}
 }
@@ -856,9 +858,9 @@ drop2() {
 # ( x1 x2 -- x2 x1 ) swap the top two stack elements with each other
 revealheader "swap"
 code swap swap
-swap() {  
-	temp=$tos  
-	tos=${s[sp]}  
+swap() {
+	temp=$tos
+	tos=${s[sp]}
 	s[sp]=$temp
 }
 
@@ -867,12 +869,12 @@ swap() {
 # ( x1 x2 x3 x4 -- x3 x4 x1 x2 ) swap top two stack elements with next two elements
 revealheader "2swap"
 code swap2 swap2
-swap2() {  
-	temp=${s[sp-1]}  
-	s[sp-1]=$tos  
-	tos=$temp  
-	temp=${s[sp-2]}  
-	s[sp-2]=${s[sp]}  
+swap2() {
+	temp=${s[sp-1]}
+	s[sp-1]=$tos
+	tos=$temp
+	temp=${s[sp-2]}
+	s[sp-2]=${s[sp]}
 	s[sp]=$temp
 }
 
@@ -882,8 +884,8 @@ swap2() {
 # ( x1 x2 -- x1 x2 x1 ) push copy of second stack element to top
 revealheader "over"
 code over over
-over() {  
-	s[++sp]=$tos  
+over() {
+	s[++sp]=$tos
 	tos=${s[sp-1]}
 }
 
@@ -892,7 +894,7 @@ over() {
 # ( x1 x2 -- x2 ) discard second stack element
 revealheader "nip"
 code nip nip
-nip() {  
+nip() {
 	((sp--))
 }
 
@@ -902,9 +904,9 @@ nip() {
 # ( x1 x2 -- x2 x1 x2 ) insert a copy of top of stack under second stack element
 revealheader "tuck"
 code tuck tuck
-tuck() {  
-	temp=${s[sp]}  
-	s[sp]=$tos  
+tuck() {
+	temp=${s[sp]}
+	s[sp]=$tos
 	s[++sp]=$temp
 }
 
@@ -913,11 +915,11 @@ tuck() {
 # ( x1 x2 x3 -- x2 x3 x1 ) rotate third stack element to top
 revealheader "rot"
 code rot rot
-rot() {  
-	temp=${s[sp]}  
-	s[sp]=$tos  
-	tos=${s[sp-1]}  
-	s[sp-1]=$temp 
+rot() {
+	temp=${s[sp]}
+	s[sp]=$tos
+	tos=${s[sp-1]}
+	s[sp-1]=$temp
 }
 
 
@@ -927,10 +929,10 @@ rot() {
 # ( x1 x2 x3 -- x3 x1 x2 ) rotate top stack element under second stack element
 revealheader "-rot"
 code minrot minrot
-minrot() {  
-	temp=${s[sp-1]}  
-	s[sp-1]=$tos  
-	tos=${s[sp]}  
+minrot() {
+	temp=${s[sp-1]}
+	s[sp-1]=$tos
+	tos=${s[sp]}
 	s[sp]=$temp
 }
 
@@ -962,7 +964,7 @@ roll() {
 revealheader ">r"
 code to_r to_r
 to_r() {
-	r[++rp]=$tos 
+	r[++rp]=$tos
 	tos=${s[sp--]}
 }
 
@@ -972,8 +974,8 @@ to_r() {
 # ( -- x ) moves top of return stack to data stack
 revealheader "r>"
 code r_from r_from
-r_from() {  
-	s[++sp]=$tos 
+r_from() {
+	s[++sp]=$tos
 	tos=${r[rp--]}
 }
 
@@ -983,8 +985,8 @@ r_from() {
 # ( -- x ) copies top of return stack to data stack
 revealheader "r@"
 code r_fetch r_fetch
-r_fetch() {  
-	s[++sp]=$tos  
+r_fetch() {
+	s[++sp]=$tos
 	tos=${r[rp]}
 }
 
@@ -994,7 +996,7 @@ r_fetch() {
 # ( -- ) drops top of return stack
 revealheader "rdrop"
 code rdrop rdrop
-rdrop() {  
+rdrop() {
 	((rp--))
 }
 
@@ -1004,9 +1006,9 @@ rdrop() {
 # ( x1 x2 -- ) moves top two data stack elements to return stack
 revealheader "2>r"
 code twoto_r twoto_r
-twoto_r() {  
-	r[++rp]=$tos 
-	r[++rp]=${s[sp--]} 
+twoto_r() {
+	r[++rp]=$tos
+	r[++rp]=${s[sp--]}
 	tos=${s[sp--]}
 }
 
@@ -1016,10 +1018,10 @@ twoto_r() {
 # ( -- x1 x2 ) moves top two return stack elements to data stack
 revealheader "2r>"
 code twor_from twor_from
-twor_from() {  
-	s[++sp]=$tos  
-	s[++sp]=${r[rp--]} 
-	tos=${r[rp--]} 
+twor_from() {
+	s[++sp]=$tos
+	s[++sp]=${r[rp--]}
+	tos=${r[rp--]}
 }
 
 
@@ -1034,8 +1036,8 @@ code i r_fetch
 # ( -- x ) returns index of innermost loop
 revealheader "j"
 code j j
-j() {  
-	s[++sp]=$tos  
+j() {
+	s[++sp]=$tos
 	tos=${r[rp-2]}
 }
 
@@ -1050,7 +1052,7 @@ j() {
 # ( n1 -- n2 ) increment top of stack by one
 revealheader "1+"
 code oneplus oneplus
-oneplus() {  
+oneplus() {
 	((tos++))
 }
 
@@ -1067,7 +1069,7 @@ code cellplus oneplus
 # ( n1 -- n2 ) increment top of stack by two
 revealheader "2+"
 code twoplus twoplus
-twoplus() {  
+twoplus() {
 	((tos+=2))
 }
 
@@ -1077,7 +1079,7 @@ twoplus() {
 # ( n1 -- n2 ) decrement top of stack by one
 revealheader "1-"
 code oneminus oneminus
-oneminus() {  
+oneminus() {
 	((tos--))
 }
 
@@ -1087,7 +1089,7 @@ oneminus() {
 # ( n1 n2 -- n3 ) add top two stack elements together, leave result
 revealheader "+"
 code plus plus
-plus()  {  
+plus()  {
 	((tos+=s[sp--]))
 }
 
@@ -1097,7 +1099,7 @@ plus()  {
 # ( n1 n2 -- n3 ) subtract tos from nos, leave result
 revealheader "-"
 code minus minus
-minus()  {  
+minus()  {
 	((tos =s[sp--]-tos))
 }
 
@@ -1107,7 +1109,7 @@ minus()  {
 # ( n -- u ) remove sign
 revealheader "abs"
 code abs abs
-abs()  {  
+abs()  {
 	tos=${tos#-}
 }
 
@@ -1116,8 +1118,8 @@ abs()  {
 
 # ( n1 n2 -- n3 ) multiply top two numbers, leave result
 revealheader "*"
-code mul mul  
-mul()  {  
+code mul mul
+mul()  {
 	((tos*=s[sp--]))
 }
 
@@ -1127,13 +1129,13 @@ mul()  {
 # ( n1 u -- n2 ) calculate power of n1 ** u, leave result
 revealheader "**"
 code power power
-power()  {  
+power()  {
 	((tos=s[sp--]**tos))
 }
 
 
 
-divzero() {  
+divzero() {
 	tos=-10
 	throw
 }
@@ -1209,7 +1211,7 @@ rshift()  {
 # ( u1 n -- u2 ) shift left u1 by n
 revealheader "lshift"
 code lshift lshift
-lshift()  {  
+lshift()  {
 	((tos="s[sp--]<<tos"))	# quotes defeat faulty syntax highlighting
 }
 
@@ -1343,14 +1345,14 @@ lesshash() {
 revealheader "#"
 code hash hash
 hash() {
-	r[++rp]=$tos   
-	((r[++rp]=s[sp]/m[base+1]))  
+	r[++rp]=$tos
+	((r[++rp]=s[sp]/m[base+1]))
 	((tos=s[sp--]%m[base+1]))
 	((tos+=48))
 	((tos>57)) && ((tos+=39))
-	s[sp+1]=$((s[sp]+1))   
+	s[sp+1]=$((s[sp]+1))
 	s[sp++]=$tos
-	s[++sp]=${r[rp--]}   
+	s[++sp]=${r[rp--]}
 	tos=${r[rp--]}
 }
 
@@ -1373,11 +1375,11 @@ hashs() {
 # ( n1 n2 f c -- c n3 n4 f  ) pictured number conversion: insert a specified character
 revealheader "hold"
 code hold hold
-hold() {  
-	temp=${tos}   
-	tos=${s[sp]}   
-	s[sp]=${s[sp-1]}   
-	s[sp-1]=$((s[sp-2]+1))   
+hold() {
+	temp=${tos}
+	tos=${s[sp]}
+	s[sp]=${s[sp-1]}
+	s[sp-1]=$((s[sp-2]+1))
 	s[sp-2]=${temp}
 }
 
@@ -1402,9 +1404,9 @@ revealheader "#>"
 code hashgreater hashgreater
 hashgreater() {
 	((sp--))
-	tos=${s[sp--]}   
-	i=$tos   
-	dest=$((dp+PADAWAY-tos))   
+	tos=${s[sp--]}
+	i=$tos
+	dest=$((dp+PADAWAY-tos))
 	temp=$dest
 	while ((i--)); do
 	   m[dest++]=${s[sp--]}
@@ -1540,7 +1542,7 @@ emit() {
 # ( -- ) output a space character
 revealheader "space"
 code space space
-space() { 
+space() {
 	printf '%1s' " "
 }
 
@@ -1587,7 +1589,7 @@ code cr printf '\n'
 # ( n -- ) raw output of tos. does not respect base, but can output string in tos.
 revealheader ".."
 code dotdot dotdot
-dotdot() {  
+dotdot() {
 	printf "%s$tos "
 	tos="${s[sp--]}"
 }
@@ -1607,7 +1609,7 @@ revealheader "key?"
 code keyq keyq
 keyq() {
 	if [[ -z $keybuf ]]; then
-		OLDIFS="$IFS"   IFS="" 
+		OLDIFS="$IFS"   IFS=""
 		read -rsn1 -t0.001 keybuf
 		IFS="$OLDIFS"
 	fi
@@ -1801,7 +1803,7 @@ dotname() {
 # ( word# -- flag ) return true flag if word, specified by word number, is an immediate word
 revealheader "?immediate"
 code qimm qimm
-qimm() {  
+qimm() {
 	((tos=hf[tos]&precedencebit))
 }
 
@@ -1810,7 +1812,7 @@ qimm() {
 # ( -- ) make most recently defined word an immediate word
 revealheader "immediate"
 code immediate immediate
-immediate() {  
+immediate() {
 	((hf[wc-1]|=precedencebit))
 }
 
@@ -1939,7 +1941,7 @@ store() {
 # ( a -- c ) read and return 8 bits from memory address a
 revealheader "c@"
 code cfetch cfetch
-cfetch() {  
+cfetch() {
 	((tos=m[tos]&255))
 }
 
@@ -2012,9 +2014,9 @@ exchange() {
 # ( a n1 c -- n2 ) search for c in string a n1. n2 is len of remainder, including first c
 revealheader "scan"
 code scan scan
-scan() {  
-	temp=$tos  
-	tos=${s[sp--]}  
+scan() {
+	temp=$tos
+	tos=${s[sp--]}
 	dest=${s[sp--]}
 	while ((tos)); do
 		[[ "${m[dest++]}" == "$temp" ]] && break
@@ -2027,9 +2029,9 @@ scan() {
 # ( a n1 c -- n2 ) skip all leading c in atring a n1. n2 is len of remainder
 revealheader "skip"
 code skip skip
-skip() {  
-	temp=$tos  
-	tos=${s[sp--]}  
+skip() {
+	temp=$tos
+	tos=${s[sp--]}
 	dest=${s[sp--]}
 	while ((tos)); do
 		[[ "${m[dest++]}" == "$temp" ]] || break
@@ -2059,15 +2061,15 @@ compare1() {
 revealheader "compare"
 code compare compare
 compare() {             # n2 in tos
-	dest=${s[sp--]}    
-	temp=${s[sp--]}    
-	source=${s[sp--]} 
+	dest=${s[sp--]}
+	temp=${s[sp--]}
+	source=${s[sp--]}
 	if [[ "$temp" = "$tos" ]]; then
 		compare1
 	else
 		temp2=1
 		if [[ $temp < $tos ]]; then
-			tos=$temp    
+			tos=$temp
 			temp2=-1
 		fi
 		compare1
@@ -2084,7 +2086,7 @@ compare() {             # n2 in tos
 revealheader "fill"
 code fill fill
 fill()  {
-	i=${s[sp--]}   
+	i=${s[sp--]}
 	dest=${s[sp--]}
 	for ((; i; i--)); do
 		m[dest++]=$tos
@@ -2121,9 +2123,9 @@ move()  {
 revealheader "move$"
 code movestr movestr
 movestr()  {
-	temp=${s[sp]}  
-	m[tos++]=$temp  
-	s[sp]=$tos  
+	temp=${s[sp]}
+	m[tos++]=$temp
+	s[sp]=$tos
 	tos=$temp
 	move
 }
@@ -2135,7 +2137,7 @@ movestr()  {
 revealheader "/string"
 code slashstring slashstring
 slashstring()  {
-	temp=$tos   
+	temp=$tos
 	tos=${s[sp--]}
 	if ((tos<temp)); then
 		temp=$tos
@@ -2175,14 +2177,14 @@ pushstr() {
 # ( -- a n ) pop string from string stack to here
 revealheader "pop$"
 code popstr popstr
-popstr() {   
-   if ((!ssp)); then  
+popstr() {
+   if ((!ssp)); then
       tos=-65; throw
    fi
    s[++sp]="$tos"
-   tos=$dp   
-   s[++sp]=$tos   
-   s[++sp]="$stos"   
+   tos=$dp
+   s[++sp]=$tos
+   s[++sp]="$stos"
    stos="${ss[ssp]}"
    ss[ssp--]=""
    unpack
@@ -2192,10 +2194,10 @@ popstr() {
 revealheader "type$"
 code typestr typestr
 typestr() {
-   if ((!ssp)); then  
+   if ((!ssp)); then
       tos=-65; throw
    fi
-   printf "%s$stos"   
+   printf "%s$stos"
    stos="${ss[ssp]}"
 }
 
@@ -2205,7 +2207,7 @@ typestr() {
 revealheader "depth$"
 code depthstr depthstr
 depthstr() {
-   s[++sp]=$tos   
+   s[++sp]=$tos
    tos=$((ssp-ss0))
 }
 
@@ -3082,7 +3084,7 @@ saveas()  {
    (
    printf "%s\n" "# bashforth_v$version memory dump"
    printf "wc=\'%s\'\n" "$wc"
-   printf "dp=\'%s\'\n" "$dp"                                   
+   printf "dp=\'%s\'\n" "$dp"
 
    printf "%s\n" "i=0"
    printf "%s\n" 'for item in $('
@@ -3090,7 +3092,7 @@ saveas()  {
    printf "%s\n" "${m[@]}"
    printf "%s\n" "EOF"
    printf "%s\n" '); do m[i++]=$item; done'
-   
+
    printf "%s\n" "i=0"
    printf "%s\n" 'for item in $('
    printf "%s\n" 'cat << EOF'
@@ -3332,7 +3334,7 @@ fg() {
 revealheader "bg"
 code bg bg
 bg() {
-  ((tos&=7 ,
+  ((tos &= 7,
     attributes&=-241,
     attributes|=(tos << 4)))       # quoted to help joe syntax highlighting
     printf '%b' "\e[4${tos}m"
@@ -3424,7 +3426,7 @@ code qat qat
 qat() {
    s[++sp]=$tos
    printf '\e[6n' > "$(tty)"
-   IFS='[;' read -dR _ tos s[++sp] 
+   IFS='[;' read -dR _ tos s[++sp]
 }
 
 
@@ -3478,7 +3480,7 @@ code shellset set
 revealheader "env"
 code environment environment
 environment() {
-   stos="${!stos}"   
+   stos="${!stos}"
 }
 
 
@@ -3505,7 +3507,7 @@ system2() {
    cmdline=$tos
    tos=${s[sp--]}
    pack
-   $tos $cmdline   
+   $tos $cmdline
    tos=$?
 }
 
@@ -3634,7 +3636,7 @@ done
 # -----------------------------------------------------------------------------
 
 set +u
-[[ -f ~/.bashforthrc ]] && source ~/.bashforthrc 
+[[ -f ~/.bashforthrc ]] && source ~/.bashforthrc
 : "${sources:=.}"
 if [[ -f "$sources/$1" ]]; then
    COMMANDLINE="include $*"
