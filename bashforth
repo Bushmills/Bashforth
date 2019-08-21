@@ -109,7 +109,7 @@ version="0.59a"
 # 0.54a 20050222 ls added ?
 # 0.54b 20050331 ls div/0 exception
 # 0.55  20060314 ls unhandled exceptions quit, not warmstart, leaving radix untouched
-# 0.55a 20061003 ls removed unnecessary cat in see
+# 0.55a 20061003 lsls removed unnecessary cat in see
 # 0.55b 20071220 ls reversed logic in key?
 #                changed comparison against empty string to -z test in exception and 2 other
 #                speeded up by using [[ or (( instead of [
@@ -135,17 +135,17 @@ version="0.59a"
 # 0.56b intermediate testing speed improvements
 # 0.56c 20080114 ls added control characters in output ascii table
 #                        using (( cond )) && action where appropriate
-#			 changing spacing to accommodate fte syntax highlighting better
-#			 some more arithmetic optimisations
+#         changing spacing to accommodate fte syntax highlighting better
+#         some more arithmetic optimisations
 # 0.57 20091005 ls  key?, needs bash 4, waits 1ms. single char buffer,
 #                        read by key?, used by key and accept.
 # 0.57a 20101022 ls fixed bug in (s") which must have slipped into with
 #                          a recent version
-#			slight optimisation of abs
+#        slight optimisation of abs
 # 0.57b 20101101 ls added env, removed "upload" handling, which went into a source file by the same name.
 #                          renamed "timestamp" to "epoche"
 #                          renamed "meerge$" to "append$"
-#			   attempts to source ~/.bashforthrc, use to set variables:
+#           attempts to source ~/.bashforthrc, use to set variables:
 #                              sources=/path/to/sourcefiles     # "include" reads source files from that dir,
 #                                                               # and defaults to current directory if unset.
 #                          added "type$"
@@ -154,18 +154,19 @@ version="0.59a"
 # 0.57d 20101127 ls removed load and loadfrom. reversed logic on -z string tests.
 #                          removed -n from string tests.
 # 0.58  20101220 ls replaced right$. simpler, shorter, faster
-#			   changed result generation of key?
+#           changed result generation of key?
 #                          bug fix number - may have another, dropping sign with hex -ff
-# 0.58a  20110819 ls fixed bug with multiple consecutive revealheader 
+# 0.58a  20110819 ls fixed bug with multiple consecutive revealheader
 # 0.58b  20120312 ls multi line compound arithmetic expressions problem with bash 4.2-1 at hash
-# 0.58c  20170609 ls An execution problem with bash 4.4 due to syntax error was fixed. 
+# 0.58c  20170609 ls A syntax error affecting bash v4.4 was fixed.
+#            ASCII to char translation array initialised with char(1) now.
 # 0.59   20190806 ls uses $EPOCHSECONDS instead of $(date +%s) for epoche when running under bash 5+
-# 0.59a  20190807 ls changed !((...)) to ! ((...)) in compare to pacify shellcheck
-
+# 0.59a  20190821 ls some more quoting, removed saving IFS contents in key and key?
+#                    changed !(( to ! (( to pacify shellcheck.
+#
 #   known bugs:
 #       catch:   doesn't return the thrown value correctly sometimes
 #       include: max line length in source files isn't checked against TIBSIZE
-#       ctrl-c:  can't catch ctrl-c
 #       load:    can't load a saved system
 #   bash 4.4 causes error abort.
 
@@ -237,55 +238,36 @@ LOADING=""
 EDITOR=sensible-editor
 
 
-# -------------------------------------------------------------------------
-# ---                      ctrl-c: user interrupt                       ---
-# -------------------------------------------------------------------------
-
-#trap "echo bashforth finished" EXIT
-#trap "echo err" ERR
-#trap "echo return" RETURN
-
-
-
-ctrl-c() {
-   tos=-28
-   ip=$warm
-   printf '%s\n' " ${throw[-tos]}"
-   return 0
-}
-trap  ctrl-c 2
-
-
 
 # -------------------------------------------------------------------------
 # ---                  allocate memory / initialize vars                ---
 # -------------------------------------------------------------------------
 
-m=()                   				# memory
-s=()    	       				# data stack
-r=()    					# return stack
-h=()    		       			# headers, wordcount
-hf=()                          			# header flags, corresponding to headers
-x=()                           			# execution tokens, corresponding to headers
-ss=()						# string stack
+m=()                             # memory
+s=()                       # data stack
+r=()                 # return stack
+h=()                       # headers, wordcount
+hf=()                                  # header flags, corresponding to headers
+x=()                                   # execution tokens, corresponding to headers
+ss=()                # string stack
 
 
-declare -i ip w					# instruction and word pointer of virtual machine
-declare -i s0=0 sp   				# data stack origin and pointer
-declare -i r0=0 rp   				# return stack origin and pointer
+declare -i ip w               # instruction and word pointer of virtual machine
+declare -i s0=0 sp               # data stack origin and pointer
+declare -i r0=0 rp               # return stack origin and pointer
 declare -i ss0=0 ssp                            # string stack origin and pointer
-declare -i dp=0                			# dictionary pointer
-declare -i wc=0					# word count
-declare -i state=0				# compiler/interpreter switch
-declare -i catchframe=0        			# pointer to latest catch frame, or 0
+declare -i dp=0                        # dictionary pointer
+declare -i wc=0               # word count
+declare -i state=0            # compiler/interpreter switch
+declare -i catchframe=0                # pointer to latest catch frame, or 0
 
 
 
 # ---- bitmasks ------------------------------------------------------------
 
 # declared as read-only, integer
-declare -ri precedencebit=1                	# immediate words
-declare -ri smudgebit=2                    	# hide/reveal headers
+declare -ri precedencebit=1                  # immediate words
+declare -ri smudgebit=2                      # hide/reveal headers
 
 
 
@@ -370,7 +352,7 @@ hide() {
 
 transient revealheader
 revealheader() {
-   ((m[dp++]=BASH_LINENO[0]-1))	# source line number
+   ((m[dp++]=BASH_LINENO[0]-1))  # source line number
    header "$1"
    reveal
 }
@@ -431,6 +413,27 @@ revealheader ""
 # ( ??? -- ) init stacks and vars, restart interpreter
 revealheader "warm"
 defer warm
+
+
+
+# -------------------------------------------------------------------------
+# ---                      ctrl-c: user interrupt                       ---
+# -------------------------------------------------------------------------
+
+#trap "echo bashforth finished" EXIT
+#trap "echo err" ERR
+#trap "echo return" RETURN
+
+
+
+ctrl-c() {
+   tos=-28
+   ip=$warm
+   printf '%s\n' " ${throw[-tos]}"
+   return 0
+}
+trap  ctrl-c 2
+
 
 
 
@@ -693,10 +696,10 @@ donext() {
 revealheader "(do)"
 code dodo dodo
 dodo() {
-	r[++rp]=${s[sp--]}
-	r[++rp]=$tos
-	((ip++))
-	tos=${s[sp--]}
+   r[++rp]=${s[sp--]}
+   r[++rp]=$tos
+   ((ip++))
+   tos=${s[sp--]}
 }
 
 
@@ -722,9 +725,9 @@ doqdo() {
 revealheader "(leave)"
 code doleave doleave
 doleave() {
-	((rp-=2))
-	ip=${m[ip]}
-	((ip+=m[ip]))
+   ((rp-=2))
+   ip=${m[ip]}
+   ((ip+=m[ip]))
 }
 
 
@@ -774,21 +777,14 @@ doplusloop() {
 }
 
 
-
-
 # ( ? xt -- ? )
 revealheader "execute"
 code execute execute
 execute() {
-	w=$tos
-	tos=${s[sp--]}
-	${m[w++]}
+   w=$tos
+   tos=${s[sp--]}
+   ${m[w++]}
 }
-
-
-
-
-
 
 # -----------------------------------------------------------------------------
 # ------------------------------ stack operators ------------------------------
@@ -838,7 +834,7 @@ qdup() {
 revealheader "drop"
 code drop drop
 drop() {
-	tos=${s[sp--]}
+   tos=${s[sp--]}
 }
 
 
@@ -848,8 +844,8 @@ drop() {
 revealheader "2drop"
 code drop2 drop2
 drop2() {
-	((sp--))
-	tos=${s[sp--]}
+   ((sp--))
+   tos=${s[sp--]}
 }
 
 
@@ -859,9 +855,9 @@ drop2() {
 revealheader "swap"
 code swap swap
 swap() {
-	temp=$tos
-	tos=${s[sp]}
-	s[sp]=$temp
+   temp=$tos
+   tos=${s[sp]}
+   s[sp]=$temp
 }
 
 
@@ -870,12 +866,12 @@ swap() {
 revealheader "2swap"
 code swap2 swap2
 swap2() {
-	temp=${s[sp-1]}
-	s[sp-1]=$tos
-	tos=$temp
-	temp=${s[sp-2]}
-	s[sp-2]=${s[sp]}
-	s[sp]=$temp
+   temp=${s[sp-1]}
+   s[sp-1]=$tos
+   tos=$temp
+   temp=${s[sp-2]}
+   s[sp-2]=${s[sp]}
+   s[sp]=$temp
 }
 
 
@@ -885,8 +881,8 @@ swap2() {
 revealheader "over"
 code over over
 over() {
-	s[++sp]=$tos
-	tos=${s[sp-1]}
+   s[++sp]=$tos
+   tos=${s[sp-1]}
 }
 
 
@@ -895,7 +891,7 @@ over() {
 revealheader "nip"
 code nip nip
 nip() {
-	((sp--))
+   ((sp--))
 }
 
 
@@ -905,9 +901,9 @@ nip() {
 revealheader "tuck"
 code tuck tuck
 tuck() {
-	temp=${s[sp]}
-	s[sp]=$tos
-	s[++sp]=$temp
+   temp=${s[sp]}
+   s[sp]=$tos
+   s[++sp]=$temp
 }
 
 
@@ -916,10 +912,10 @@ tuck() {
 revealheader "rot"
 code rot rot
 rot() {
-	temp=${s[sp]}
-	s[sp]=$tos
-	tos=${s[sp-1]}
-	s[sp-1]=$temp
+   temp=${s[sp]}
+   s[sp]=$tos
+   tos=${s[sp-1]}
+   s[sp-1]=$temp
 }
 
 
@@ -930,10 +926,10 @@ rot() {
 revealheader "-rot"
 code minrot minrot
 minrot() {
-	temp=${s[sp-1]}
-	s[sp-1]=$tos
-	tos=${s[sp]}
-	s[sp]=$temp
+   temp=${s[sp-1]}
+   s[sp-1]=$tos
+   tos=${s[sp]}
+   s[sp]=$temp
 }
 
 
@@ -950,12 +946,12 @@ pick() {  tos=${s[sp-tos]}; }
 revealheader "roll"
 code roll roll
 roll() {
-	temp=${s[sp-tos]}
-	for ((; tos; --tos)); do
-	   s[sp-tos]=${s[sp-tos+1]}
-	done
-	((sp--))
-	tos=$temp
+   temp=${s[sp-tos]}
+   for ((; tos; --tos)); do
+      s[sp-tos]=${s[sp-tos+1]}
+   done
+   ((sp--))
+   tos=$temp
 }
 
 
@@ -964,8 +960,8 @@ roll() {
 revealheader ">r"
 code to_r to_r
 to_r() {
-	r[++rp]=$tos
-	tos=${s[sp--]}
+   r[++rp]=$tos
+   tos=${s[sp--]}
 }
 
 
@@ -975,8 +971,8 @@ to_r() {
 revealheader "r>"
 code r_from r_from
 r_from() {
-	s[++sp]=$tos
-	tos=${r[rp--]}
+   s[++sp]=$tos
+   tos=${r[rp--]}
 }
 
 
@@ -986,8 +982,8 @@ r_from() {
 revealheader "r@"
 code r_fetch r_fetch
 r_fetch() {
-	s[++sp]=$tos
-	tos=${r[rp]}
+   s[++sp]=$tos
+   tos=${r[rp]}
 }
 
 
@@ -997,7 +993,7 @@ r_fetch() {
 revealheader "rdrop"
 code rdrop rdrop
 rdrop() {
-	((rp--))
+   ((rp--))
 }
 
 
@@ -1007,9 +1003,9 @@ rdrop() {
 revealheader "2>r"
 code twoto_r twoto_r
 twoto_r() {
-	r[++rp]=$tos
-	r[++rp]=${s[sp--]}
-	tos=${s[sp--]}
+   r[++rp]=$tos
+   r[++rp]=${s[sp--]}
+   tos=${s[sp--]}
 }
 
 
@@ -1019,9 +1015,9 @@ twoto_r() {
 revealheader "2r>"
 code twor_from twor_from
 twor_from() {
-	s[++sp]=$tos
-	s[++sp]=${r[rp--]}
-	tos=${r[rp--]}
+   s[++sp]=$tos
+   s[++sp]=${r[rp--]}
+   tos=${r[rp--]}
 }
 
 
@@ -1037,8 +1033,8 @@ code i r_fetch
 revealheader "j"
 code j j
 j() {
-	s[++sp]=$tos
-	tos=${r[rp-2]}
+   s[++sp]=$tos
+   tos=${r[rp-2]}
 }
 
 
@@ -1053,7 +1049,7 @@ j() {
 revealheader "1+"
 code oneplus oneplus
 oneplus() {
-	((tos++))
+   ((tos++))
 }
 
 
@@ -1070,7 +1066,7 @@ code cellplus oneplus
 revealheader "2+"
 code twoplus twoplus
 twoplus() {
-	((tos+=2))
+   ((tos+=2))
 }
 
 
@@ -1080,7 +1076,7 @@ twoplus() {
 revealheader "1-"
 code oneminus oneminus
 oneminus() {
-	((tos--))
+   ((tos--))
 }
 
 
@@ -1090,7 +1086,7 @@ oneminus() {
 revealheader "+"
 code plus plus
 plus()  {
-	((tos+=s[sp--]))
+   ((tos+=s[sp--]))
 }
 
 
@@ -1100,7 +1096,7 @@ plus()  {
 revealheader "-"
 code minus minus
 minus()  {
-	((tos =s[sp--]-tos))
+   ((tos =s[sp--]-tos))
 }
 
 
@@ -1110,7 +1106,7 @@ minus()  {
 revealheader "abs"
 code abs abs
 abs()  {
-	tos=${tos#-}
+   tos=${tos#-}
 }
 
 
@@ -1120,7 +1116,7 @@ abs()  {
 revealheader "*"
 code mul mul
 mul()  {
-	((tos*=s[sp--]))
+   ((tos*=s[sp--]))
 }
 
 
@@ -1130,14 +1126,14 @@ mul()  {
 revealheader "**"
 code power power
 power()  {
-	((tos=s[sp--]**tos))
+   ((tos=s[sp--]**tos))
 }
 
 
 
 divzero() {
-	tos=-10
-	throw
+   tos=-10
+   throw
 }
 
 
@@ -1146,8 +1142,8 @@ divzero() {
 revealheader "/"
 code div div
 div()  {
-	((tos)) || divzero
-	((tos=s[sp--]/tos))
+   ((tos)) || divzero
+   ((tos=s[sp--]/tos))
 }
 
 
@@ -1156,8 +1152,8 @@ div()  {
 revealheader "*/"
 code starslash starslash
 starslash()  {
-	((tos)) || divzero
-	((tos=s[sp--]*s[sp--]/tos))
+   ((tos)) || divzero
+   ((tos=s[sp--]*s[sp--]/tos))
 }
 
 
@@ -1167,10 +1163,10 @@ starslash()  {
 revealheader "*/mod"
 code starslashmod starslashmod
 starslashmod()  {
-	((tos)) || divzero
-	((temp=s[sp--]*s[sp],
-	s[sp]=temp%tos,
-	tos=temp/tos))
+   ((tos)) || divzero
+   ((temp=s[sp--]*s[sp],
+   s[sp]=temp%tos,
+   tos=temp/tos))
 }
 
 
@@ -1180,8 +1176,8 @@ starslashmod()  {
 revealheader "mod"
 code mod mod
 mod()  {
-	((tos)) || divzero
-	((tos=s[sp--]%tos))
+   ((tos)) || divzero
+   ((tos=s[sp--]%tos))
 }
 
 
@@ -1191,10 +1187,10 @@ mod()  {
 revealheader "/mod"
 code slashmod slashmod
 slashmod()  {
-	((tos)) || divzero
-	((temp=s[sp],
-	s[sp]=temp%tos,
-	tos=temp/tos))
+   ((tos)) || divzero
+   ((temp=s[sp],
+   s[sp]=temp%tos,
+   tos=temp/tos))
 }
 
 
@@ -1203,7 +1199,7 @@ slashmod()  {
 revealheader "rshift"
 code rshift rshift
 rshift()  {
-	((tos=s[sp--]>>tos))
+   ((tos=s[sp--]>>tos))
 }
 
 
@@ -1212,7 +1208,7 @@ rshift()  {
 revealheader "lshift"
 code lshift lshift
 lshift()  {
-	((tos="s[sp--]<<tos"))	# quotes defeat faulty syntax highlighting
+   ((tos="s[sp--]<<tos"))  # quotes defeat faulty syntax highlighting
 }
 
 
@@ -1275,19 +1271,19 @@ revealheader "?number"
 code qnumber qnumber
 qnumber() {
    local digit sign=0 radix=${m[base+1]}
-   (( i = tos ))       			# number of digits to test/convert
-   (( tos = -1 ))     			# assume number
-   (( temp = s[sp] ))                  	# addr of next digit
-   (( s[sp] = 0 ))                     	# accumulator
+   (( i = tos ))              # number of digits to test/convert
+   (( tos = -1 ))             # assume number
+   (( temp = s[sp] ))                     # addr of next digit
+   (( s[sp] = 0 ))                        # accumulator
    (( m[temp] == 45 )) &&
-       (( sign = -1 , temp++ , i-- ))	# leading -
-   for ((; i; i-- )); do		# for all digits
-      (( digit = m[temp++] - 48 ))	# read ascii of digit
+       (( sign = -1 , temp++ , i-- ))  # leading -
+   for ((; i; i-- )); do      # for all digits
+      (( digit = m[temp++] - 48 ))  # read ascii of digit
       (( digit > 9 )) && (( digit -= 39 ))
       if (( digit >= 0 && digit < radix )); then
          (( s[sp] = s[sp] * radix + digit ))
       else
-         (( tos = 0 )) 			# flag "not a valid number"
+         (( tos = 0 ))        # flag "not a valid number"
          break
       fi
    done
@@ -1309,12 +1305,12 @@ revealheader "number"
 code number number
 number() {
    local digit sign=0 radix=${m[base+1]}
-   (( src = s[sp] ))                  	# addr of next digit
+   (( src = s[sp] ))                   # addr of next digit
    (( s[sp] = 0 ))                      # accumulator
    (( m[src] == 45 )) &&
       (( sign = -1 , src++ , tos-- ))   # strip leading -
-   for ((; tos; tos-- )); do		# for all digits
-      ((digit=m[src++]-48))	        # read ascii of digit
+   for ((; tos; tos-- )); do     # for all digits
+      ((digit=m[src++]-48))           # read ascii of digit
       ((digit>9 && (digit-=39)))
       ((digit>=0 && digit<radix)) || break
       ((s[sp]=s[sp]*radix+digit))
@@ -1345,15 +1341,15 @@ lesshash() {
 revealheader "#"
 code hash hash
 hash() {
-	r[++rp]=$tos
-	((r[++rp]=s[sp]/m[base+1]))
-	((tos=s[sp--]%m[base+1]))
-	((tos+=48))
-	((tos>57)) && ((tos+=39))
-	s[sp+1]=$((s[sp]+1))
-	s[sp++]=$tos
-	s[++sp]=${r[rp--]}
-	tos=${r[rp--]}
+   r[++rp]=$tos
+   ((r[++rp]=s[sp]/m[base+1]))
+   ((tos=s[sp--]%m[base+1]))
+   ((tos+=48))
+   ((tos>57)) && ((tos+=39))
+   s[sp+1]=$((s[sp]+1))
+   s[sp++]=$tos
+   s[++sp]=${r[rp--]}
+   tos=${r[rp--]}
 }
 
 
@@ -1363,10 +1359,10 @@ hash() {
 revealheader "#s"
 code hashs hashs
 hashs() {
-	hash
-	while ((s[sp])); do
-		hash
-	done
+   hash
+   while ((s[sp])); do
+      hash
+   done
 }
 
 
@@ -1376,11 +1372,11 @@ hashs() {
 revealheader "hold"
 code hold hold
 hold() {
-	temp=${tos}
-	tos=${s[sp]}
-	s[sp]=${s[sp-1]}
-	s[sp-1]=$((s[sp-2]+1))
-	s[sp-2]=${temp}
+   temp=${tos}
+   tos=${s[sp]}
+   s[sp]=${s[sp-1]}
+   s[sp-1]=$((s[sp-2]+1))
+   s[sp-2]=${temp}
 }
 
 
@@ -1389,11 +1385,11 @@ hold() {
 revealheader "sign"
 code sign sign
 sign() {
-	((tos)) || return
-	twoto_r
-	((tos++))
-	s[++sp]=45
-	twor_from
+   ((tos)) || return
+   twoto_r
+   ((tos++))
+   s[++sp]=45
+   twor_from
 }
 
 
@@ -1403,15 +1399,15 @@ sign() {
 revealheader "#>"
 code hashgreater hashgreater
 hashgreater() {
-	((sp--))
-	tos=${s[sp--]}
-	i=$tos
-	dest=$((dp+PADAWAY-tos))
-	temp=$dest
-	while ((i--)); do
-	   m[dest++]=${s[sp--]}
-	done
-	s[++sp]=$temp
+   ((sp--))
+   tos=${s[sp--]}
+   i=$tos
+   dest=$((dp+PADAWAY-tos))
+   temp=$dest
+   while ((i--)); do
+      m[dest++]=${s[sp--]}
+   done
+   s[++sp]=$temp
 }
 
 
@@ -1421,11 +1417,11 @@ hashgreater() {
 revealheader "#>type"
 code hashgreatertype hashgreatertype
 hashgreatertype() {
-	((sp--))
-	for ((i=s[sp--]; i; --i)); do
-		printf '%s' "${asc[${s[sp--]}]}"
-	done
-	tos=${s[sp--]}
+   ((sp--))
+   for ((i=s[sp--]; i; --i)); do
+      printf '%s' "${asc[${s[sp--]}]}"
+   done
+   tos=${s[sp--]}
 }
 
 
@@ -1533,8 +1529,8 @@ invert() { ((tos=~tos)); }
 revealheader "emit"
 code emit emit
 emit() {
-	printf '%s' "${asc[tos]}"
-	tos="${s[sp--]}"
+   printf '%s' "${asc[tos]}"
+   tos="${s[sp--]}"
 }
 
 
@@ -1543,7 +1539,7 @@ emit() {
 revealheader "space"
 code space space
 space() {
-	printf '%1s' " "
+   printf '%1s' " "
 }
 
 
@@ -1551,8 +1547,8 @@ space() {
 revealheader "spaces"
 code spaces spaces
 spaces() {
-	printf "%${tos}s"
-	tos="${s[sp--]}"
+   printf "%${tos}s"
+   tos="${s[sp--]}"
 }
 
 
@@ -1571,9 +1567,9 @@ code cls clear
 revealheader "type"
 code type type
 type() {
-	pack
-	printf "%s$tos"
-	tos="${s[sp--]}"
+   pack
+   printf "%s$tos"
+   tos="${s[sp--]}"
 }
 
 
@@ -1590,8 +1586,8 @@ code cr printf '\n'
 revealheader ".."
 code dotdot dotdot
 dotdot() {
-	printf "%s$tos "
-	tos="${s[sp--]}"
+   printf "%s$tos "
+   tos="${s[sp--]}"
 }
 
 
@@ -1608,13 +1604,10 @@ keybuf=""
 revealheader "key?"
 code keyq keyq
 keyq() {
-	if [[ -z $keybuf ]]; then
-		OLDIFS="$IFS"   IFS=""
-		read -rsn1 -t0.001 keybuf
-		IFS="$OLDIFS"
-	fi
-	s[++sp]="$tos"
-	tos=$(((${#keybuf}==0)-1))
+   [[ -z $keybuf ]] &&
+      IFS="" read -rsn1 -t0.001 keybuf
+   s[++sp]="$tos"
+   tos=$(((${#keybuf}==0)-1))
 }
 
 
@@ -1622,14 +1615,11 @@ keyq() {
 revealheader "key"
 code key key
 key() {
-	s[++sp]="$tos"
-	if [[ -z $keybuf ]]; then
-		OLDIFS="$IFS"   IFS=""
-		read -rsn1 keybuf
-		IFS="$OLDIFS"
-	fi
-	tos=$(printf "%d" "'$keybuf")
-	keybuf=""
+   s[++sp]="$tos"
+   [[ -z $keybuf ]] &&
+      IFS="" read -rsn1 keybuf
+   tos=$(printf "%d" "'$keybuf")
+   keybuf=""
 }
 
 
@@ -1639,12 +1629,12 @@ key() {
 revealheader "accept"
 code accept accept
 accept() {
-	printf "%s$keybuf"
-	read -ersn "$tos" buffer
-	tos="${keybuf}${buffer}"
-	keybuf=""
-	swap
-	unpack
+   printf "%s$keybuf"
+   read -ersn "$tos" buffer
+   tos="${keybuf}${buffer}"
+   keybuf=""
+   swap
+   unpack
 }
 
 
@@ -1804,7 +1794,7 @@ dotname() {
 revealheader "?immediate"
 code qimm qimm
 qimm() {
-	((tos=hf[tos]&precedencebit))
+   ((tos=hf[tos]&precedencebit))
 }
 
 
@@ -1813,7 +1803,7 @@ qimm() {
 revealheader "immediate"
 code immediate immediate
 immediate() {
-	((hf[wc-1]|=precedencebit))
+   ((hf[wc-1]|=precedencebit))
 }
 
 
@@ -1932,8 +1922,8 @@ colon dot      $fetch $dot
 revealheader "!"
 code store store
 store() {
-	m[tos]=${s[sp--]}
-	tos=${s[sp--]}
+   m[tos]=${s[sp--]}
+   tos=${s[sp--]}
 }
 
 
@@ -1942,7 +1932,7 @@ store() {
 revealheader "c@"
 code cfetch cfetch
 cfetch() {
-	((tos=m[tos]&255))
+   ((tos=m[tos]&255))
 }
 
 
@@ -1951,8 +1941,8 @@ cfetch() {
 revealheader "c!"
 code cstore cstore
 cstore() {
-	((m[tos]=s[sp--]&255))
-	tos=${s[sp--]}
+   ((m[tos]=s[sp--]&255))
+   tos=${s[sp--]}
 }
 
 
@@ -1961,8 +1951,8 @@ cstore() {
 revealheader "count"
 code count count
 count() {
-	((s[++sp]=tos+1,
-	tos=m[tos]&255))
+   ((s[++sp]=tos+1,
+   tos=m[tos]&255))
 }
 
 
@@ -1971,8 +1961,8 @@ count() {
 revealheader "skim"
 code skim skim
 skim() {
-	((s[++sp]=tos+1,
-	tos=m[tos]))
+   ((s[++sp]=tos+1,
+   tos=m[tos]))
 }
 
 
@@ -1993,8 +1983,8 @@ colon twostore   $tuck $cellplus $store $store
 revealheader "+!"
 code plusstore plusstore
 plusstore() {
-	((m[tos]+=s[sp--]))
-	tos=${s[sp--]}
+   ((m[tos]+=s[sp--]))
+   tos=${s[sp--]}
 }
 
 
@@ -2004,9 +1994,9 @@ plusstore() {
 revealheader "exchange"
 code exchange exchange
 exchange() {
-	temp=${m[tos]}
-	m[tos]=${s[sp--]}
-	tos=$temp
+   temp=${m[tos]}
+   m[tos]=${s[sp--]}
+   tos=$temp
 }
 
 
@@ -2015,13 +2005,13 @@ exchange() {
 revealheader "scan"
 code scan scan
 scan() {
-	temp=$tos
-	tos=${s[sp--]}
-	dest=${s[sp--]}
-	while ((tos)); do
-		[[ "${m[dest++]}" == "$temp" ]] && break
-	((tos--))
-	done
+   temp=$tos
+   tos=${s[sp--]}
+   dest=${s[sp--]}
+   while ((tos)); do
+      [[ "${m[dest++]}" == "$temp" ]] && break
+   ((tos--))
+   done
 }
 
 
@@ -2030,13 +2020,13 @@ scan() {
 revealheader "skip"
 code skip skip
 skip() {
-	temp=$tos
-	tos=${s[sp--]}
-	dest=${s[sp--]}
-	while ((tos)); do
-		[[ "${m[dest++]}" == "$temp" ]] || break
-	((tos--))
-	done
+   temp=$tos
+   tos=${s[sp--]}
+   dest=${s[sp--]}
+   while ((tos)); do
+      [[ "${m[dest++]}" == "$temp" ]] || break
+   ((tos--))
+   done
 }
 
 
@@ -2047,36 +2037,36 @@ skip() {
 # compare $tos bytes at  $source and $dest
 # result of comparison (-1/0/1) in $tos
 compare1() {
-	while ((tos)); do
-		((temp=m[source++]-m[dest++]))
-		if ((temp)); then
-			tos="$(( ((temp > 0) << 1) - 1))"
-			break
-		fi
-		((tos--))
-	done
+   while ((tos)); do
+      ((temp=m[source++]-m[dest++]))
+      if ((temp)); then
+         tos="$(( ((temp > 0) << 1) - 1))"
+         break
+      fi
+      ((tos--))
+   done
 }
 
 # ( a1 n1 a2 n2 -- -1 | 0 | 1 ) compare two strings at a1 and a2.
 revealheader "compare"
 code compare compare
 compare() {             # n2 in tos
-	dest=${s[sp--]}
-	temp=${s[sp--]}
-	source=${s[sp--]}
-	if [[ "$temp" = "$tos" ]]; then
-		compare1
-	else
-		temp2=1
-		if [[ $temp < $tos ]]; then
-			tos=$temp
-			temp2=-1
-		fi
-		compare1
-		if ! ((tos)); then
-			tos=$temp2
-		fi
-	fi
+   dest=${s[sp--]}
+   temp=${s[sp--]}
+   source=${s[sp--]}
+   if [[ "$temp" = "$tos" ]]; then
+      compare1
+   else
+      temp2=1
+      if [[ $temp < $tos ]]; then
+         tos=$temp
+         temp2=-1
+      fi
+      compare1
+      if ! ((tos)); then
+         tos=$temp2
+      fi
+   fi
 }
 
 
@@ -2086,12 +2076,12 @@ compare() {             # n2 in tos
 revealheader "fill"
 code fill fill
 fill()  {
-	i=${s[sp--]}
-	dest=${s[sp--]}
-	for ((; i; i--)); do
-		m[dest++]=$tos
-	done
-	tos=${s[sp--]}
+   i=${s[sp--]}
+   dest=${s[sp--]}
+   for ((; i; i--)); do
+      m[dest++]=$tos
+   done
+   tos=${s[sp--]}
 }
 
 
@@ -2123,11 +2113,11 @@ move()  {
 revealheader "move$"
 code movestr movestr
 movestr()  {
-	temp=${s[sp]}
-	m[tos++]=$temp
-	s[sp]=$tos
-	tos=$temp
-	move
+   temp=${s[sp]}
+   m[tos++]=$temp
+   s[sp]=$tos
+   tos=$temp
+   move
 }
 
 
@@ -2137,12 +2127,12 @@ movestr()  {
 revealheader "/string"
 code slashstring slashstring
 slashstring()  {
-	temp=$tos
-	tos=${s[sp--]}
-	if ((tos<temp)); then
-		temp=$tos
-	fi
-	((s[sp]+=temp, tos-=temp))
+   temp=$tos
+   tos=${s[sp--]}
+   if ((tos<temp)); then
+      temp=$tos
+   fi
+   ((s[sp]+=temp, tos-=temp))
 }
 
 
@@ -2401,8 +2391,8 @@ setdoes() {  m[m[lastxt+1]]="dodoes $((ip+1))"; }
 
 # ( -- ) define run time action of a compiling word
 revealheader "does>"
-colon does			   	\
-   $lit $setdoes $comma		   	\
+colon does              \
+   $lit $setdoes $comma          \
    $lit $unnest  $comma
 immediate
 
@@ -2911,13 +2901,13 @@ immediate
 
 # ( -- ) fill input buffer from standard input
 revealheader "query"
-colon query				\
-   $lit 255				\
-   $tib	 $dup $in $store		\
-   $dup					\
-   $lit $((TIBSIZE-1))			\
-   $accept				\
-   $plus				\
+colon query          \
+   $lit 255          \
+   $tib   $dup $in $store     \
+   $dup              \
+   $lit $((TIBSIZE-1))        \
+   $accept           \
+   $plus          \
    $cstore
 
 
@@ -2926,41 +2916,41 @@ colon query				\
 
 # ( a n -- ) interpreter for a single word
 revealheader "interpret1"
-colon interpret1			\
-   $findx  			        \
-   $qdup $branch0 17			\
+colon interpret1        \
+   $findx                 \
+   $qdup $branch0 17       \
       $oneminus $branch0 7              \
-      $compiling $branch0 4		\
-      $comma				\
-      $branch 7				\
-      $execute				\
+      $compiling $branch0 4      \
+      $comma            \
+      $branch 7            \
+      $execute          \
       $depth $less0 $branch0            \
-          2 $stackunderflow $unnest	\
-   $dup2 $qnumber			\
-   $branch0 8				\
-      $nip $nip				\
-      $compiling			\
-      $branch0 2			\
-      $literal				\
-      $unnest				\
+          2 $stackunderflow $unnest \
+   $dup2 $qnumber       \
+   $branch0 8           \
+      $nip $nip            \
+      $compiling        \
+      $branch0 2        \
+      $literal          \
+      $unnest           \
     $type $notfound
 
 
 
 # ( -- ) interpret one line of forth source
 revealheader "interpret"
-colon interpret				\
-   $lit 32 $stream			\
-   $qdup				\
-   $branch0 4				\
-   $interpret1				\
-   $branch -8				\
+colon interpret            \
+   $lit 32 $stream         \
+   $qdup          \
+   $branch0 4           \
+   $interpret1          \
+   $branch -8           \
    $drop
 
 
 # ( a n -- ) interpret the string passed on stack
 #revealheader "evaluate"
-#colon evaluate				\
+#colon evaluate            \
 # string to tib  $interpret
 
 
@@ -3025,9 +3015,9 @@ colon include           \
    $sourcepath          \
    $bl $stream $pushstr $appendstr  \
    $popstr $from        \
-   $zero $dodo 6	\
-   $i $line		\
-   $interpret		\
+   $zero $dodo 6  \
+   $i $line    \
+   $interpret     \
    $doloop -4      \
    $endfrom
 
@@ -3144,12 +3134,12 @@ init_other() {
 # ( ??? -- )
 revealheader "(quit)"
 colon bracketquit                       \
-   $init_stacks				\
-   $zero $innerloop $store		\
-   $leftbracket				\
-   $query				\
-   $interpret				\
-   $prompt				\
+   $init_stacks            \
+   $zero $innerloop $store    \
+   $leftbracket            \
+   $query            \
+   $interpret           \
+   $prompt           \
    $branch -4
 
 m[quit+1]=$bracketquit            # set deferred quit
@@ -3159,11 +3149,11 @@ m[quit+1]=$bracketquit            # set deferred quit
 
 # ( ??? -- )
 revealheader "(warm)"
-colon warmhandler			\
-   $init_stacks				\
-   $init_other				\
-   $decimal				\
-   $prompt				\
+colon warmhandler       \
+   $init_stacks            \
+   $init_other          \
+   $decimal          \
+   $prompt           \
    $quit
 
 m[warm+1]=$warmhandler            # set deferred warm
@@ -3597,19 +3587,19 @@ commandline() {
 
 
 revealheader "cold"
-boot=$dp; colon cold	\
-   $init_stacks		\
-   $init_other		\
-   $decimal		\
-   $commandline		\
-   $branch0 4		\
-      $interpret	\
-   $branch 2		\
-      $hello		\
-   $prompt		\
-   $query		\
-   $interpret		\
-   $prompt		\
+boot=$dp; colon cold \
+   $init_stacks      \
+   $init_other    \
+   $decimal    \
+   $commandline      \
+   $branch0 4     \
+      $interpret  \
+   $branch 2      \
+      $hello      \
+   $prompt     \
+   $query      \
+   $interpret     \
+   $prompt     \
    $branch -4
 # duplicating part of the outer interpreter loop here is done
 # to allow command line actions to carry over stack into the
@@ -3625,7 +3615,7 @@ boot=$dp; colon cold	\
 
 i=${#remove[*]}
 while ((i)); do
-   unset ${remove[--i]}
+   unset "${remove[--i]}"
 done
 
 
