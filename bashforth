@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.59a"
+version="0.60"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -163,11 +163,15 @@ version="0.59a"
 # 0.59   20190806 ls uses $EPOCHSECONDS instead of $(date +%s) for epoche when running under bash 5+
 # 0.59a  20190821 ls some more quoting, removed saving IFS contents in key and key?
 #                    changed !(( to ! (( to pacify shellcheck.
+# 0.60   20190830 ls added restore, restore-from, save-system, saveas, contributed by quaraman-me
+#                    type$ didn't drop top string stack element. Fixed
+#                    changed output of .s$ to vertical. top of string stack is uppermost output line.
+#                    Fixed error in type when outputting % char.
 #
 #   known bugs:
 #       catch:   doesn't return the thrown value correctly sometimes
 #       include: max line length in source files isn't checked against TIBSIZE
-#       load:    can't load a saved system
+#       chars W...` will be interpreted as 0...9 by number input conversion
 #   bash 4.4 causes error abort.
 
 
@@ -231,7 +235,7 @@ version="0.59a"
 # -------------------------------------------------------------------------
 # ---                           configuration                           ---
 # -------------------------------------------------------------------------
-PADAWAY=256       # distance between HERE and PAD
+PADAWAY=256                      # distance between HERE and PAD
 TIBSIZE=256
 PROMPT="ok"
 LOADING=""
@@ -244,37 +248,37 @@ EDITOR=sensible-editor
 # -------------------------------------------------------------------------
 
 m=()                             # memory
-s=()                       # data stack
-r=()                 # return stack
-h=()                       # headers, wordcount
-hf=()                                  # header flags, corresponding to headers
-x=()                                   # execution tokens, corresponding to headers
-ss=()                # string stack
+s=()                             # data stack
+r=()                             # return stack
+h=()                             # headers, wordcount
+hf=()                            # header flags, corresponding to headers
+x=()                             # execution tokens, corresponding to headers
+ss=()                            # string stack
 
 
-declare -i ip w               # instruction and word pointer of virtual machine
+declare -i ip w                  # instruction and word pointer of virtual machine
 declare -i s0=0 sp               # data stack origin and pointer
 declare -i r0=0 rp               # return stack origin and pointer
-declare -i ss0=0 ssp                            # string stack origin and pointer
-declare -i dp=0                        # dictionary pointer
-declare -i wc=0               # word count
-declare -i state=0            # compiler/interpreter switch
-declare -i catchframe=0                # pointer to latest catch frame, or 0
+declare -i ss0=0 ssp             # string stack origin and pointer
+declare -i dp=0                  # dictionary pointer
+declare -i wc=0                  # word count
+declare -i state=0               # compiler/interpreter switch
+declare -i catchframe=0          # pointer to latest catch frame, or 0
 
 
 
 # ---- bitmasks ------------------------------------------------------------
 
 # declared as read-only, integer
-declare -ri precedencebit=1                  # immediate words
-declare -ri smudgebit=2                      # hide/reveal headers
+declare -ri precedencebit=1      # immediate words
+declare -ri smudgebit=2          # hide/reveal headers
 
 
 
 # --------------- build decimal>ascii lookup table for emit ----------------
 asc=()
 for i in {1..255}; do
-   asc[i]=$(echo -en "\\x$(printf %x $i)")  # ascii 0-255
+   asc[i]=$(echo -en "\\x$(printf '%x' $i)")  # ascii 0-255
 done
 
 
@@ -571,7 +575,7 @@ branch0() {
    if ((tos)); then
       ((ip++))
    else
-   ((ip+=m[ip]))
+      ((ip+=m[ip]))
    fi
    tos=${s[sp--]}
 }
@@ -602,7 +606,6 @@ lit() {
 
 
 # ( a n -- x ) assembles asciis at m[a] to string in tos
-
 revealheader "pack"
 code pack pack
 pack() {
@@ -1568,7 +1571,7 @@ revealheader "type"
 code type type
 type() {
    pack
-   printf "%s$tos"
+   printf '%s' "$tos"
    tos="${s[sp--]}"
 }
 
@@ -1586,7 +1589,7 @@ code cr printf '\n'
 revealheader ".."
 code dotdot dotdot
 dotdot() {
-   printf "%s$tos "
+   printf '%s ' "$tos"
    tos="${s[sp--]}"
 }
 
@@ -1618,7 +1621,7 @@ key() {
    s[++sp]="$tos"
    [[ -z $keybuf ]] &&
       IFS="" read -rsn1 keybuf
-   tos=$(printf "%d" "'$keybuf")
+   tos=$(printf '%d' "'$keybuf")
    keybuf=""
 }
 
@@ -1629,7 +1632,7 @@ key() {
 revealheader "accept"
 code accept accept
 accept() {
-   printf "%s$keybuf"
+   printf '%s' "$keybuf"
    read -ersn "$tos" buffer
    tos="${keybuf}${buffer}"
    keybuf=""
@@ -2187,8 +2190,9 @@ typestr() {
    if ((!ssp)); then
       tos=-65; throw
    fi
-   printf "%s$stos"
+   printf '%s' "$stos"
    stos="${ss[ssp]}"
+   ((ssp--))
 }
 
 
@@ -2202,18 +2206,17 @@ depthstr() {
 }
 
 
-
-
 # ( -- ) show strings on string stack
 revealheader ".s$"
 code dot_sstr dot_sstr
 dot_sstr() {
    if ((ssp)); then
-      temp=$ss0
-      while ((ssp>++temp)); do
-         printf '%s' "${ss[temp+1]} "
+      printf '%s\n' "$stos "
+      temp=$(( ssp ))
+      while ((temp > ss0+1)); do
+         printf '%s\n' "${ss[temp]}"
+         (( temp-- ))
       done
-      printf '%s' "$stos "
    fi
 }
 
@@ -3062,47 +3065,124 @@ colon include           \
 
 
 
-# -----------------------------------------------------------------------------
-# ------------------------------- save-system ---------------------------------
+# -----------------------------------------------------------------------------  save-system and restore were
+# ------------------------------- save-system ---------------------------------  contributed by quaraman-me
 # -----------------------------------------------------------------------------
 
+save_array_print() {
+   local i
+   local inext
+   local -n a=$1
+   inext=0
+   printf 'a0\n'
+   for i in "${!a[@]}"; do
+      [[ "$inext" != "$i" ]] &&
+         printf 'ao %s\n' "$i"
+      printf 'a %s\n' "${a[i]}"
+      (( inext++ ))
+   done
+}
 
-# ( a c -- )
+# ( a c -- ) writes image of system to file, file name passed as address, count on stack
 code saveas saveas
 saveas()  {
+   local i
+   local inext
+   local len
    pack
-   (
-   printf "%s\n" "# bashforth_v$version memory dump"
-   printf "wc=\'%s\'\n" "$wc"
-   printf "dp=\'%s\'\n" "$dp"
+   [[ "$tos" ]] || tos="saved_system"
+   {  printf "version %s\n" "$version"
+      printf "wc %s\n" "$wc"
+      printf "dp %s\n" "$dp"
 
-   printf "%s\n" "i=0"
-   printf "%s\n" 'for item in $('
-   printf "%s\n" 'cat << EOF'
-   printf "%s\n" "${m[@]}"
-   printf "%s\n" "EOF"
-   printf "%s\n" '); do m[i++]=$item; done'
-
-   printf "%s\n" "i=0"
-   printf "%s\n" 'for item in $('
-   printf "%s\n" 'cat << EOF'
-   printf "%s\n" "${h[@]}"
-   printf "%s\n" "EOF"
-   printf "%s\n" '); do h[i++]=$item; done'
-
-   printf "%s\n" "i=0"
-   printf "hf[i++]=\'%s\'\n" "${hf[@]}"
-   printf "%s\n" "i=0"
-   printf "x[i++]=\'%s\'\n" "${x[@]}"
-   ) > $tos
+      save_array_print m
+      save_array_print h
+      save_array_print hf
+      save_array_print x
+   } > "$tos"
    tos=${s[sp--]}
 }
 
 
-# ( <stream> -- ) write image of system to file, file name taken from input stream
+# ( <stream> -- ) writes image of system to file, file name taken from input stream. If no name given, "save_system" will be the name.
 revealheader "save-system"
 colon savesystem    $bl $stream $saveas
 
+
+# -----------------------------------------------------------------------------
+# -------------------------- restore saved system -----------------------------
+# -----------------------------------------------------------------------------
+
+
+# ( a c -- )
+code restorefrom restorefrom
+restorefrom()  {
+   local load_version
+   local cmd
+   local prg
+   local a=0
+   local ai=0
+   local linenr=0
+   pack
+   m=()
+   h=()
+   hf=()
+   x=()
+   fname="${tos:-saved_system}"
+   tos=${s[sp--]}
+   while read -r line; do
+      prg=($line)
+      cmd="${prg[0]}"
+      p1="${prg[1]}"
+      p2="${prg[2]}"
+
+      case "$cmd" in
+      version)
+         load_version="$p1"
+         [[ "$load_version" != "$version" ]] &&
+            echo "Not same Version : $load_version"
+         ;;
+      wc)
+         wc="$p1"
+         ;;
+      dp)
+         dp="$p1"
+         ;;
+      a0)
+         ai=0
+         (( a++ ))
+         ;;
+      ao)
+         ai="$p1"
+         ;;
+      a)
+         case $a in
+         1)
+            m[ai++]="$p1"
+            ;;
+         2)
+            h[ai++]="$p1"
+            ;;
+         3)
+            hf[ai++]="$p1"
+            ;;
+         4)
+            x[ai++]="$p1"
+            ;;
+         esac
+         ;;
+      hlt)
+         ai=0
+         break;
+         ;;
+      esac
+      (( linenr++ ))
+   done < "$fname"
+}
+
+# ( <stream> -- ) write image of system to file, file name taken from input stream. If no name given, saved_system will be the name.
+revealheader "restore"
+colon restore    $bl $stream $restorefrom
 
 
 
@@ -3133,13 +3213,13 @@ init_other() {
 
 # ( ??? -- )
 revealheader "(quit)"
-colon bracketquit                       \
+colon bracketquit          \
    $init_stacks            \
-   $zero $innerloop $store    \
+   $zero $innerloop $store \
    $leftbracket            \
-   $query            \
-   $interpret           \
-   $prompt           \
+   $query                  \
+   $interpret              \
+   $prompt                 \
    $branch -4
 
 m[quit+1]=$bracketquit            # set deferred quit
@@ -3149,11 +3229,11 @@ m[quit+1]=$bracketquit            # set deferred quit
 
 # ( ??? -- )
 revealheader "(warm)"
-colon warmhandler       \
+colon warmhandler          \
    $init_stacks            \
-   $init_other          \
-   $decimal          \
-   $prompt           \
+   $init_other             \
+   $decimal                \
+   $prompt                 \
    $quit
 
 m[warm+1]=$warmhandler            # set deferred warm
@@ -3192,7 +3272,7 @@ code hello hello
 hello() {
    echo -e "\nBashForth v$version
    $(license)
-   www:      http://www.forthfreak.net
+   www:      https://github.com/Bushmills/Bashforth
 
    words <enter>       shows a list of available words
    doc word  <enter>   gives description of word
@@ -3326,7 +3406,7 @@ code bg bg
 bg() {
   ((tos &= 7,
     attributes&=-241,
-    attributes|=(tos << 4)))       # quoted to help joe syntax highlighting
+    attributes|=(tos << 4)))
     printf '%b' "\e[4${tos}m"
     tos=${s[sp--]}
 }
@@ -3410,17 +3490,6 @@ atxy() {
 }
 
 
-# ( -- x y ) returns cursor position. doesn't work yet
-revealheader "?at"
-code qat qat
-qat() {
-   s[++sp]=$tos
-   printf '\e[6n' > "$(tty)"
-   IFS='[;' read -dR _ tos s[++sp]
-}
-
-
-
 
 # ( -- ) position cursor at upper left
 revealheader "home"
@@ -3447,7 +3516,7 @@ code timeanddate timeanddate
 timeanddate() {
    s[++sp]=$tos   temp=( $( date "+%S %M %H %d %m %Y" ) )
    for i in {0..4}; do
-      s[++sp]=$( printf '%g' ${temp[i]} )
+      s[++sp]=$( printf '%g' "${temp[i]}" )
    done
    tos=${temp[5]}
 }
@@ -3535,20 +3604,28 @@ ms() {
 }
 
 
+revealheader "epoche"
+code epoche epoche
+
+if (( ${BASH_VERSION%%.*} < 5 )); then
+
+# ( -- n ) returns seconds since 1/1/1970
+epoche() {
+   s[++sp]=$tos
+   tos=$(date +%s)
+}
+
+else
 
 # ( -- n ) returns seconds since 1/1/1970
 revealheader "epoche"
 code epoche epoche
 epoche() {
    s[++sp]=$tos
-   if (( ${BASH_VERSION%%.*} < 5 )); then
-      tos=$(date +%s)
-   else
-      tos=$EPOCHSECONDS
-   fi
+   tos=$EPOCHSECONDS
 }
 
-
+fi
 
 # ( -- n ) returns nanoseconds since 1/1/1970
 revealheader "nanoseconds"
@@ -3589,17 +3666,17 @@ commandline() {
 revealheader "cold"
 boot=$dp; colon cold \
    $init_stacks      \
-   $init_other    \
-   $decimal    \
+   $init_other       \
+   $decimal          \
    $commandline      \
-   $branch0 4     \
-      $interpret  \
-   $branch 2      \
-      $hello      \
-   $prompt     \
-   $query      \
-   $interpret     \
-   $prompt     \
+   $branch0 4        \
+      $interpret     \
+   $branch 2         \
+      $hello         \
+   $prompt           \
+   $query            \
+   $interpret        \
+   $prompt           \
    $branch -4
 # duplicating part of the outer interpreter loop here is done
 # to allow command line actions to carry over stack into the
