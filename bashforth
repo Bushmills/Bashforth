@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.60c"
+version="0.60d"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -172,6 +172,7 @@ version="0.60c"
 #                    fixed rshift: making it logical right shift while bash does arithmetic right shift.
 #                    partially (attempted to fix) sign problem in #
 # 0.60c  20190830 ls see prevented from mangling output lines.
+# 0.60d  20190830 ls fixed expanding * in restore.
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
@@ -3144,7 +3145,7 @@ restorefrom()  {
    fname="${tos:-saved_system}"
    tos=${s[sp--]}
    while read -r line; do
-      prg=($line)
+      read -a prg <<< "$line"
       cmd="${prg[0]}"
       p1="${prg[1]}"
       p2="${prg[2]}"
