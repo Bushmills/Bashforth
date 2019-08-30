@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.60b"
+version="0.60c"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -171,6 +171,7 @@ version="0.60b"
 # 0.60b  20190830 ls added nlimit, producing highest signed number.
 #                    fixed rshift: making it logical right shift while bash does arithmetic right shift.
 #                    partially (attempted to fix) sign problem in #
+# 0.60c  20190830 ls see prevented from mangling output lines.
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
@@ -453,6 +454,7 @@ trap  ctrl-c 2
 # -----------------------------------------------------------------------------
 
 
+
 nest() {
    r[++rp]=$ip
    ip=$w
@@ -469,6 +471,9 @@ unnest() {
 # ----------------------------------------------------------------------------
 # --------------------------- constants, variables ---------------------------
 # ----------------------------------------------------------------------------
+
+msb=1; until ((msb<0)); do ((msb<<=1)); done
+
 
 # ( -- -1 )
 revealheader "true"
@@ -532,7 +537,6 @@ revealheader "bl"
 constant bl 32
 
 
-msb=1; until ((msb<0)); do ((msb<<=1)); done
 # ( -- x ) highest signed number
 revealheader "nlimit"
 constant nlimit $((msb-1))
@@ -1354,9 +1358,9 @@ lesshash() {
 revealheader "#"
 code hash hash
 hash() {
-   r[++rp]=$tos
-   ((r[++rp]=s[sp]/m[base+1]))
    local radix=${m[base+1]}
+   r[++rp]=$tos
+   ((r[++rp]=s[sp]/radix))
    ((tos=(((s[sp--]%radix)+radix)%radix)+48))
    ((tos>57)) && ((tos+=39))
    s[sp+1]=$((s[sp]+1))
@@ -3339,12 +3343,8 @@ colon doc  $tick $sourceline $printdoc
 # ( -- )
 code printsource printsource
 printsource() {
-     echo in file $0:
-     sed 1,${tos}d $0|
-     while read -r LINE; do
-        [[ $LINE ]] || break
-        echo "$LINE"
-     done
+     echo "in file $0:"
+     sed -n "1,${tos}d;p;/^ *$/q" "$0"
      tos=${s[sp--]}
 }
 
@@ -3352,9 +3352,6 @@ printsource() {
 # ( <stream> -- ) print source of a word (read from the executed bashforth script file)
 revealheader "see"
 colon see   $tick $sourceline $printsource
-
-
-
 
 
 
