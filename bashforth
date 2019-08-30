@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.60"
+version="0.60b"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -167,11 +167,16 @@ version="0.60"
 #                    type$ didn't drop top string stack element. Fixed
 #                    changed output of .s$ to vertical. top of string stack is uppermost output line.
 #                    Fixed error in type when outputting % char.
+# 0.60a  20190830 ls .s$ autodecrements
+# 0.60b  20190830 ls added nlimit, producing highest signed number.
+#                    fixed rshift: making it logical right shift while bash does arithmetic right shift.
+#                    partially (attempted to fix) sign problem in #
 #
 #   known bugs:
-#       catch:   doesn't return the thrown value correctly sometimes
-#       include: max line length in source files isn't checked against TIBSIZE
-#       chars W...` will be interpreted as 0...9 by number input conversion
+#     catch:   doesn't return the thrown value correctly sometimes
+#     include: max line length in source files isn't checked against TIBSIZE
+#     chars W...` will be interpreted as 0...9 by number input conversion
+#     number out breaks with nlimit+1, but only in decimal, not in hex or binary. nlimit and nlimit+2 are fine.
 #   bash 4.4 causes error abort.
 
 
@@ -517,14 +522,20 @@ revealheader "6"
 constant six 6
 
 
-# ( -- 27 )
+# ( -- 27 ) ASCII of Escape char
 revealheader "esc"
 constant esc 27
 
 
-# ( -- 32 )
+# ( -- 32 ) ASCII of space char
 revealheader "bl"
 constant bl 32
+
+
+msb=1; until ((msb<0)); do ((msb<<=1)); done
+# ( -- x ) highest signed number
+revealheader "nlimit"
+constant nlimit $((msb-1))
 
 
 # ( -- a )
@@ -1202,9 +1213,8 @@ slashmod()  {
 revealheader "rshift"
 code rshift rshift
 rshift()  {
-   ((tos=s[sp--]>>tos))
+   ((tos=(s[sp--]>>tos) & ~msb))
 }
-
 
 
 # ( u1 n -- u2 ) shift left u1 by n
@@ -1346,8 +1356,8 @@ code hash hash
 hash() {
    r[++rp]=$tos
    ((r[++rp]=s[sp]/m[base+1]))
-   ((tos=s[sp--]%m[base+1]))
-   ((tos+=48))
+   local radix=${m[base+1]}
+   ((tos=(((s[sp--]%radix)+radix)%radix)+48))
    ((tos>57)) && ((tos+=39))
    s[sp+1]=$((s[sp]+1))
    s[sp++]=$tos
