@@ -2214,8 +2214,7 @@ dot_sstr() {
       printf '%s\n' "$stos "
       temp=$(( ssp ))
       while ((temp > ss0+1)); do
-         printf '%s\n' "${ss[temp]}"
-         (( temp-- ))
+         printf '%s\n' "${ss[temp--]}"
       done
    fi
 }
