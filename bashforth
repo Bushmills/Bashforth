@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.60d"
+version="0.60e"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -173,14 +173,16 @@ version="0.60d"
 #                    partially (attempted to fix) sign problem in #
 # 0.60c  20190830 ls see prevented from mangling output lines.
 # 0.60d  20190830 ls fixed expanding * in restore.
+# 0.60e  20190830 ls fixed: number input accepting some non numeric chars
+#                    added: 2swap d= sub$
+#                    changed: left$ and right$ call sub$, ?number uses (fixed) number
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
 #     include: max line length in source files isn't checked against TIBSIZE
-#     chars W...` will be interpreted as 0...9 by number input conversion
 #     number out breaks with nlimit+1, but only in decimal, not in hex or binary. nlimit and nlimit+2 are fine.
-#   bash 4.4 causes error abort.
-
+#     env: without name abort with "invalid variable name"
+#     see: doesn't look into included source files
 
 
 # global variables:
@@ -220,7 +222,8 @@ version="0.60d"
 # foo() {               # executable implementated as function
 #    s[++sp]=$tos       # stack push
 #    tos=${s[sp--]}     # stack pop
-# }
+# }                     # empty lines follows
+#
 #########################################################################################
 
 
@@ -231,7 +234,8 @@ version="0.60d"
 # revealheader "foo"    # name in forth vocabulary
 # colon foo           \ # name in bash. line continuation
 #   $word $word $word \ # compiled words, line continuation
-#   $word $word         # last line does not need continuation
+#   $word $word         # last line does not need continuation, empty line follows
+#
 #########################################################################################
 
 
@@ -355,6 +359,7 @@ reveal() {
    ((hf[wc-1] |= smudgebit))
 }
 
+
 hide() {
    ((hf[wc-1] &= ~smudgebit))
 }
@@ -363,7 +368,7 @@ hide() {
 
 transient revealheader
 revealheader() {
-   ((m[dp++]=BASH_LINENO[0]-1))  # source line number
+   ((m[dp++]=BASH_LINENO[0]-1))  # source line number - consider to put file/line into an array with source locations
    header "$1"
    reveal
 }
@@ -473,6 +478,7 @@ unnest() {
 # --------------------------- constants, variables ---------------------------
 # ----------------------------------------------------------------------------
 
+: "${sources:=.}"
 msb=1; until ((msb<0)); do ((msb<<=1)); done
 
 
@@ -881,7 +887,7 @@ swap() {
 
 
 
-# ( x1 x2 x3 x4 -- x3 x4 x1 x2 ) swap top two stack elements with next two elements
+# ( x1 x2 x3 x4 -- x3 x4 x1 x2 ) swap top 2 stack items against 3rd and 4th of stack
 revealheader "2swap"
 code swap2 swap2
 swap2() {
@@ -895,7 +901,6 @@ swap2() {
 
 
 
-
 # ( x1 x2 -- x1 x2 x1 ) push copy of second stack element to top
 revealheader "over"
 code over over
@@ -904,6 +909,16 @@ over() {
    tos=${s[sp-1]}
 }
 
+
+# ( x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2 ) copy 3rd and 4th stack item to stack top
+revealheader "2over"
+code over2 over2
+over2() {
+   s[++sp]=$tos
+   tos=${s[sp-3]}
+   s[++sp]=$tos
+   tos=${s[sp-3]}
+}
 
 
 # ( x1 x2 -- x2 ) discard second stack element
@@ -957,7 +972,6 @@ minrot() {
 revealheader "pick"
 code pick pick
 pick() {  tos=${s[sp-tos]}; }
-
 
 
 
@@ -1277,40 +1291,105 @@ max() {
 
 
 
+
+
+
+# -----------------------------------------------------------------------------
+# ---------------------------- arithmetic compare  ----------------------------
+# -----------------------------------------------------------------------------
+
+
+
+# ( x1 x2 -- flag ) compare top two stack elements, return true if equal, false otherwise
+revealheader "="
+code equ equ
+equ() { tos=$((-(tos==s[sp--]))); }
+
+
+
+
+# ( x1 x2 -- flag ) compare top two stack elements, return true if unequal, false otherwise
+revealheader "<>"
+code nequ nequ
+nequ() { tos=$((-(tos!=s[sp--]))); }
+
+
+
+# ( x -- flag ) compare top stack element with zero, return true if equal, false otherwise
+revealheader "0="
+code equ0 equ0
+equ0() { tos=$((-(tos==0))); }
+
+
+
+# ( x -- flag ) return true if top element is less than 0, false otherwise
+revealheader "0<"
+code less0 less0
+less0() {  tos=$((-(tos<0))); }
+
+
+
+# ( n1 n2 -- flag ) return true if second stack element is smaller than top element, false otherwise
+revealheader "<"
+code less less
+less() { tos=$((-(s[sp--]<tos))); }
+
+
+
+# ( n1 n2 -- flag ) return true if second stack element is greater than top element, false otherwise
+revealheader ">"
+code greater greater
+greater() { tos=$((-(s[sp--]>tos))); }
+
+
+# ( x1 x2 x3 x4 -- flag ) compare x1,x2 with x3,x4, return true if equal, false otherwise
+revealheader "d="
+code dequ dequ
+dequ() {
+   tos=$((-(tos==s[sp-1] & s[sp]==s[sp-2])))
+   ((sp-=3))
+}
+
+
+# -----------------------------------------------------------------------------
+# ----------------------------------- bool ------------------------------------
+# -----------------------------------------------------------------------------
+
+
+# ( x1 x2 -- x3 ) bitwise and of top two stack elements
+revealheader "and"
+code and and
+and() { ((tos&=s[sp--])); }
+
+
+
+# ( x1 x2 -- x3 ) bitwise or of top two stack elements
+revealheader "or"
+code or or
+or() { ((tos|=s[sp--])); }
+
+
+
+
+# ( x1 x2 -- x3 ) bitwise xor of top two stack elements
+revealheader "xor"
+code xor xor
+xor() { ((tos^=s[sp--])); }
+
+
+
+
+# ( x1 -- x2 ) invert all bits of top stack elements
+revealheader "invert"
+code invert invert
+invert() { ((tos=~tos)); }
+
+
+
 # -----------------------------------------------------------------------------
 # ------------------------ number conversion and i/o --------------------------
 # -----------------------------------------------------------------------------
 
-
-
-
-# ( a n -- x -1 | 0 ) try to convert n chars at a to number, respecting base
-revealheader "?number"
-code qnumber qnumber
-qnumber() {
-   local digit sign=0 radix=${m[base+1]}
-   (( i = tos ))              # number of digits to test/convert
-   (( tos = -1 ))             # assume number
-   (( temp = s[sp] ))                     # addr of next digit
-   (( s[sp] = 0 ))                        # accumulator
-   (( m[temp] == 45 )) &&
-       (( sign = -1 , temp++ , i-- ))  # leading -
-   for ((; i; i-- )); do      # for all digits
-      (( digit = m[temp++] - 48 ))  # read ascii of digit
-      (( digit > 9 )) && (( digit -= 39 ))
-      if (( digit >= 0 && digit < radix )); then
-         (( s[sp] = s[sp] * radix + digit ))
-      else
-         (( tos = 0 ))        # flag "not a valid number"
-         break
-      fi
-   done
-   if (( ! tos )); then
-      (( sp-- ))                        # drop string address
-   elif (( sign )); then
-      (( s[sp] = -s[sp] ))
-   fi
-}
 
 
 
@@ -1323,19 +1402,63 @@ revealheader "number"
 code number number
 number() {
    local digit sign=0 radix=${m[base+1]}
-   (( src = s[sp] ))                   # addr of next digit
-   (( s[sp] = 0 ))                      # accumulator
+   (( src = s[sp] ))                      # addr of next digit
+   (( s[sp] = 0 ))                        # accumulator
    (( m[src] == 45 )) &&
-      (( sign = -1 , src++ , tos-- ))   # strip leading -
-   for ((; tos; tos-- )); do     # for all digits
-      ((digit=m[src++]-48))           # read ascii of digit
-      ((digit>9 && (digit-=39)))
-      ((digit>=0 && digit<radix)) || break
-      ((s[sp]=s[sp]*radix+digit))
+      (( sign = -1 , src++ , tos-- ))     # strip leading -
+   for ((; tos; tos-- )); do              # for all digits
+      (( digit=m[src++]-48 ))             # read ascii of digit, convert to numeric
+      (( digit < 0 )) && break            # flag chars below 0 as invalid numbers
+      (( digit > 9 )) &&  {               # chars above 9 need more attention
+         (( digit -= 7 ))                 # convert A... to numeric
+         (( digit < 10 )) && break        # flag :...@ as invalid numbers
+         (( digit >= 36 )) && {           # chars above Z need more attention
+            (( digit -= 32 ))             # convert a... to numeric
+            (( digit < 10 )) && break     # flag [...' as invalid numbers
+         }
+      }
+      (( digit >= radix )) && break       # flag chars as invalid number"
+      (( s[sp]=s[sp]*radix+digit ))
    done
-   (( sign )) || (( s[sp] = -s[sp] ))
+   (( sign )) && (( s[sp] = -s[sp] ))
 }
 
+
+
+# ( a n -- x -1 | 0 ) try to convert n chars at a to number, respecting base
+revealheader "?number"
+colon qnumber  $number  $equ0 $qdup $drop
+
+
+#code qnumber qnumber
+#qnumber() {
+#   local digit sign=0 radix=${m[base+1]}
+#   (( i = tos ))              # number of digits to test/convert
+#   (( tos = -1 ))             # assume number
+#   (( temp = s[sp] ))                     # addr of next digit
+#   (( s[sp] = 0 ))                        # accumulator
+#   (( m[temp] == 45 )) &&
+#       (( sign = -1 , temp++ , i-- ))  # leading -
+#   for ((; i; i-- )); do      # for all digits
+#      (( digit = m[temp++] - 48 ))  # read ascii of digit
+#      (( digit < 0 )) && { tos=0; break; }     # flag "not a valid number"
+#      (( digit > 9 )) &&  {
+#         (( digit -= 7 ))
+#         (( digit < 10 )) && { tos=0; break; }         # flag "not a valid number"
+#         (( digit >= 36 )) && {
+#            (( digit -= 32 ))
+#            (( digit < 10 )) && { tos=0; break; }      # flag "not a valid number"
+#         }
+#      }
+#      (( digit >= radix )) && { tos=0; break; }     # flag "not a valid number"
+#      (( s[sp] = s[sp] * radix + digit ))
+#   done
+#   if (( ! tos )); then
+#      (( sp-- ))                        # drop string address
+#   elif (( sign )); then
+#      (( s[sp] = -s[sp] ))
+#   fi
+#}
 
 
 
@@ -1441,97 +1564,6 @@ hashgreatertype() {
    done
    tos=${s[sp--]}
 }
-
-
-
-
-# -----------------------------------------------------------------------------
-# ---------------------------------- logical ----------------------------------
-# -----------------------------------------------------------------------------
-
-
-
-# ( x1 x2 -- flag ) compare top two stack elements, return true if equal, false otherwise
-revealheader "="
-code equ equ
-equ() { tos=$((-(tos==s[sp--]))); }
-
-
-
-
-# ( x1 x2 -- flag ) compare top two stack elements, return true if unequal, false otherwise
-revealheader "<>"
-code nequ nequ
-nequ() { tos=$((-(tos!=s[sp--]))); }
-
-
-
-
-# ( x -- flag ) compare top stack element with zero, return true if equal, false otherwise
-revealheader "0="
-code equ0 equ0
-equ0() { tos=$((-(tos==0))); }
-
-
-
-# ( x -- flag ) return true if top element is less than 0, false otherwise
-revealheader "0<"
-code less0 less0
-less0() {  tos=$((-(tos<0))); }
-
-
-
-
-# ( n1 n2 -- flag ) return true if second stack element is smaller than top element, false otherwise
-revealheader "<"
-code less less
-less() { tos=$((-(s[sp--]<tos))); }
-
-
-
-# ( n1 n2 -- flag ) return true if second stack element is greater than top element, false otherwise
-revealheader ">"
-code greater greater
-greater() { tos=$((-(s[sp--]>tos))); }
-
-
-
-
-
-# -----------------------------------------------------------------------------
-# ----------------------------------- bool ------------------------------------
-# -----------------------------------------------------------------------------
-
-
-# ( x1 x2 -- x3 ) bitwise and of top two stack elements
-revealheader "and"
-code and and
-and() { ((tos&=s[sp--])); }
-
-
-
-# ( x1 x2 -- x3 ) bitwise or of top two stack elements
-revealheader "or"
-code or or
-or() { ((tos|=s[sp--])); }
-
-
-
-
-# ( x1 x2 -- x3 ) bitwise xor of top two stack elements
-revealheader "xor"
-code xor xor
-xor() { ((tos^=s[sp--])); }
-
-
-
-
-# ( x1 -- x2 ) invert all bits of top stack elements
-revealheader "invert"
-code invert invert
-invert() { ((tos=~tos)); }
-
-
 
 
 
@@ -1798,7 +1830,7 @@ name() {
 
 
 
-# ( wordnum --  ) output word name, given word number
+# ( wordnum --  ) output word name, given word number ("nfa")
 revealheader ".name"
 code dotname dotname
 dotname() {
@@ -1808,7 +1840,7 @@ dotname() {
 
 
 
-# ( word# -- flag ) return true flag if word, specified by word number, is an immediate word
+# ( word# -- flag ) return true flag if word, specified by word number ("nfa"), is an immediate word
 revealheader "?immediate"
 code qimm qimm
 qimm() {
@@ -2170,7 +2202,6 @@ colon word        $stream $here $movestr $here
 # -----------------------------------------------------------------------------
 
 
-
 # ( a n -- ) push string at a to string stack
 revealheader "push$"
 code pushstr pushstr
@@ -2336,39 +2367,27 @@ appendstr() {
 }
 
 
+# ( u1 u2 -- )  ( ss: $1 -- $2 )  cut and return string starting at index u1 (zero based) with max length of u2 chars. negative index counts from end of string
+revealheader "sub$"
+code substr substr
+substr()  {
+   if ((!ssp)); then
+      tos=-65; throw
+   fi
+   temp=${s[sp--]}
+   stos="${stos:$temp:$tos}"
+   tos=${s[sp--]}
+}
 
-# ( a1 n1 n -- a2 n2 ) return first n chars of string, or discard last -n chars from string on string stack
+
+# ( u -- ) ( ss: $1 -- $2 ) modifies string so that leading u chars of string remain
 revealheader "left$"
-code leftstr leftstr
-leftstr()  {
-   if ((!ssp)); then
-      tos=-65; throw
-   fi
-   if (( tos < 0 )); then
-      if ((( tos += ${#stos})<0 )); then
-         tos=0
-      fi
-   fi
-   stos="${stos:0:$tos}"
-   tos=${s[sp--]}
-}
+colon leftstr   $zero $swap $substr
 
 
-
-# ( a1 n1 n -- a2 n2 ) return last n chars of string, or discard first -n chars from string
+# ( u -- ) ( ss: $1 -- $2 ) modifies string so that trailing u chars of string remain
 revealheader "right$"
-code rightstr rightstr
-rightstr()  {
-   if ((!ssp)); then
-      tos=-65; throw
-   fi
-   if ((tos<0)); then
-      stos="${stos:-tos}"
-   else
-      stos="${stos: -tos}"
-   fi
-   tos=${s[sp--]}
-}
+colon rightstr   $dup $negate $swap $substr
 
 
 # ( a n -- ) creates header. expects ascii array type string
@@ -3104,7 +3123,7 @@ saveas()  {
    local inext
    local len
    pack
-   [[ "$tos" ]] || tos="saved_system"
+   [[ "$tos" ]] || tos="$sources/saved_system"
    {  printf "version %s\n" "$version"
       printf "wc %s\n" "$wc"
       printf "dp %s\n" "$dp"
@@ -3142,7 +3161,7 @@ restorefrom()  {
    h=()
    hf=()
    x=()
-   fname="${tos:-saved_system}"
+   fname="${tos:-$sources/saved_system}"
    tos=${s[sp--]}
    while read -r line; do
       read -a prg <<< "$line"
@@ -3711,7 +3730,6 @@ done
 
 set +u
 [[ -f ~/.bashforthrc ]] && source ~/.bashforthrc
-: "${sources:=.}"
 if [[ -f "$sources/$1" ]]; then
    COMMANDLINE="include $*"
 else
