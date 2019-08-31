@@ -173,7 +173,7 @@ version="0.60e"
 #                    partially (attempted to fix) sign problem in #
 # 0.60c  20190830 ls see prevented from mangling output lines.
 # 0.60d  20190830 ls fixed expanding * in restore.
-# 0.60e  20190830 ls fixed: number input accepting some non numeric chars
+# 0.60e  20190830 ls fixed: number input accepting some non numeric chars. A side effect is that digits > 10 are now case insensitive.
 #                    added: 2swap d= sub$
 #                    changed: left$ and right$ call sub$, ?number uses (fixed) number
 #
@@ -1392,8 +1392,6 @@ invert() { ((tos=~tos)); }
 
 
 
-
-
 # alternative implementation. different stack effect. if conversion fails, n
 # is the number of character not converted. x is the accumulated values of all
 #  legal digits up to the offending one
@@ -1424,43 +1422,10 @@ number() {
 }
 
 
-
+# conversion with standard stack effect. Uses alternative implementation now.
 # ( a n -- x -1 | 0 ) try to convert n chars at a to number, respecting base
 revealheader "?number"
-colon qnumber  $number  $equ0 $qdup $drop
-
-
-#code qnumber qnumber
-#qnumber() {
-#   local digit sign=0 radix=${m[base+1]}
-#   (( i = tos ))              # number of digits to test/convert
-#   (( tos = -1 ))             # assume number
-#   (( temp = s[sp] ))                     # addr of next digit
-#   (( s[sp] = 0 ))                        # accumulator
-#   (( m[temp] == 45 )) &&
-#       (( sign = -1 , temp++ , i-- ))  # leading -
-#   for ((; i; i-- )); do      # for all digits
-#      (( digit = m[temp++] - 48 ))  # read ascii of digit
-#      (( digit < 0 )) && { tos=0; break; }     # flag "not a valid number"
-#      (( digit > 9 )) &&  {
-#         (( digit -= 7 ))
-#         (( digit < 10 )) && { tos=0; break; }         # flag "not a valid number"
-#         (( digit >= 36 )) && {
-#            (( digit -= 32 ))
-#            (( digit < 10 )) && { tos=0; break; }      # flag "not a valid number"
-#         }
-#      }
-#      (( digit >= radix )) && { tos=0; break; }     # flag "not a valid number"
-#      (( s[sp] = s[sp] * radix + digit ))
-#   done
-#   if (( ! tos )); then
-#      (( sp-- ))                        # drop string address
-#   elif (( sign )); then
-#      (( s[sp] = -s[sp] ))
-#   fi
-#}
-
-
+colon qnumber  $number $equ0 $qdup $drop
 
 
 
