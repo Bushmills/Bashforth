@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.60f"
+version="0.61"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -178,6 +178,7 @@ version="0.60f"
 #                    changed: left$ and right$ call sub$, ?number uses (fixed) number
 # 0.60f  20190831 ls fixed: wrong number output when outputting a number with only msb set (nlimit+1)
 #                    changed (already in a previous version): executing save-system and restore without file name write to/read from $sources directory
+# 0.61   20190831 ls changed: mod, /mod, */mod used floored modulo now (result is that modulo will never be negative). Bash uses truncated modulo.
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
@@ -1199,11 +1200,15 @@ revealheader "*/mod"
 code starslashmod starslashmod
 starslashmod()  {
    ((tos)) || divzero
-   ((temp=s[sp--]*s[sp],
-   s[sp]=temp%tos,
-   tos=temp/tos))
+   (( temp = s[sp--] * s[sp] ))
+   if (( temp < 0 )); then
+      (( s[sp] = temp % tos + tos,
+         tos = temp / tos - 1 ))
+   else
+      (( s[sp] = temp % tos,
+         tos = temp / tos ))
+   fi
 }
-
 
 
 
@@ -1212,9 +1217,8 @@ revealheader "mod"
 code mod mod
 mod()  {
    ((tos)) || divzero
-   ((tos=s[sp--]%tos))
+   ((tos=(s[sp--]%tos+tos)%tos))
 }
-
 
 
 
@@ -1223,9 +1227,14 @@ revealheader "/mod"
 code slashmod slashmod
 slashmod()  {
    ((tos)) || divzero
-   ((temp=s[sp],
-   s[sp]=temp%tos,
-   tos=temp/tos))
+   (( temp = s[sp] ))
+   if (( temp < 0 )); then
+      (( s[sp] = temp % tos + tos,
+         tos = temp / tos - 1 ))
+   else
+      (( s[sp] = temp % tos,
+         tos = temp / tos ))
+   fi
 }
 
 
