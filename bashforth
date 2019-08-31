@@ -178,13 +178,14 @@ version="0.61"
 #                    changed: left$ and right$ call sub$, ?number uses (fixed) number
 # 0.60f  20190831 ls fixed: wrong number output when outputting a number with only msb set (nlimit+1)
 #                    changed (already in a previous version): executing save-system and restore without file name write to/read from $sources directory
-# 0.61   20190831 ls changed: mod, /mod, */mod used floored modulo now (result is that modulo will never be negative). Bash uses truncated modulo.
+# 0.61   20190831 ls functionally reverted to 0.60f, undoing changes to floored modulo and division, causing more damage than benefits
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
 #     include: max line length in source files isn't checked against TIBSIZE
 #     env: without name abort with "invalid variable name"
 #     see: doesn't look into included source files
+#     /:  while modulo and divison of /mod and */mod are floored,  / isn't.
 
 
 # global variables:
@@ -1174,6 +1175,64 @@ divzero() {
 
 
 
+# ( n1 n2 n3 -- n4 n5 ) multiply n1 with n2, divide by n3, returning remainder n4 and quotient n5
+revealheader "*/mod"
+code starslashmod starslashmod
+starslashmod()  {
+   ((tos)) || divzero
+   ((temp=s[sp--]*s[sp],
+   s[sp]=temp%tos,
+   tos=temp/tos))
+}
+
+#   ((tos)) || divzero
+#   (( temp = s[sp--] * s[sp] ))
+#   (( temp2 = tos ))
+#   (( s[sp] = temp % tos ))
+#   (( tos = temp / tos ))
+#   if (( tos < 0 )); then
+#      (( tos-- ))
+#      (( s[sp] += temp2 ))
+#   fi
+#}
+
+
+# ( n1 n2 -- n3 ) return remainder of n1/n2
+revealheader "mod"
+code mod mod
+mod()  {
+   ((tos)) || divzero
+   ((tos=s[sp--]%tos))
+}
+
+#   ((tos=(s[sp--]%tos+tos)%tos))
+
+
+
+
+# ( n1 n2 -- n3 n4 ) return remainder n3 and quotient n4 of n1/n2
+revealheader "/mod"
+code slashmod slashmod
+slashmod()  {
+   ((tos)) || divzero
+   ((temp=s[sp],
+   s[sp]=temp%tos,
+   tos=temp/tos))
+}
+
+#   ((tos)) || divzero
+#   (( temp = s[sp] ))
+#   (( temp2 = tos ))
+#   (( s[sp] = temp % tos ))
+#   (( tos = temp / tos ))
+#   if (( tos < 0 )); then
+#      (( tos-- ))
+#      (( s[sp] += temp2 ))
+#   fi
+
+
+
+
 # ( n1 n2 -- n3 ) divide n1 by n2, return result
 revealheader "/"
 code div div
@@ -1187,55 +1246,18 @@ div()  {
 # ( n1 n2 n3 -- n4 ) multiply n1 with n2, divide by n3
 revealheader "*/"
 code starslash starslash
-starslash()  {
+starslashmod()  {
    ((tos)) || divzero
    ((tos=s[sp--]*s[sp--]/tos))
 }
 
-
-
-
-# ( n1 n2 n3 -- n4 n5 ) multiply n1 with n2, divide by n3, returning remainder n4 and quotient n5
-revealheader "*/mod"
-code starslashmod starslashmod
-starslashmod()  {
-   ((tos)) || divzero
-   (( temp = s[sp--] * s[sp] ))
-   if (( temp < 0 )); then
-      (( s[sp] = temp % tos + tos,
-         tos = temp / tos - 1 ))
-   else
-      (( s[sp] = temp % tos,
-         tos = temp / tos ))
-   fi
-}
-
-
-
-# ( n1 n2 -- n3 ) return remainder of n1/n2
-revealheader "mod"
-code mod mod
-mod()  {
-   ((tos)) || divzero
-   ((tos=(s[sp--]%tos+tos)%tos))
-}
-
-
-
-# ( n1 n2 -- n3 n4 ) return remainder n3 and quotient n4 of n1/n2
-revealheader "/mod"
-code slashmod slashmod
-slashmod()  {
-   ((tos)) || divzero
-   (( temp = s[sp] ))
-   if (( temp < 0 )); then
-      (( s[sp] = temp % tos + tos,
-         tos = temp / tos - 1 ))
-   else
-      (( s[sp] = temp % tos,
-         tos = temp / tos ))
-   fi
-}
+#   ((tos)) || divzero
+#   (( temp = s[sp--] * s[sp] ))
+#   (( temp2 = tos ))
+#   (( tos = temp / tos ))
+#   if (( tos < 0 )); then
+#      (( tos-- ))
+#   fi
 
 
 
