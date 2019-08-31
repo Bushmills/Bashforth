@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.60e"
+version="0.60f"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -144,7 +144,7 @@ version="0.60e"
 #        slight optimisation of abs
 # 0.57b 20101101 ls added env, removed "upload" handling, which went into a source file by the same name.
 #                          renamed "timestamp" to "epoche"
-#                          renamed "meerge$" to "append$"
+#                          renamed "merge$" to "append$"
 #           attempts to source ~/.bashforthrc, use to set variables:
 #                              sources=/path/to/sourcefiles     # "include" reads source files from that dir,
 #                                                               # and defaults to current directory if unset.
@@ -176,11 +176,12 @@ version="0.60e"
 # 0.60e  20190830 ls fixed: number input accepting some non numeric chars. A side effect is that digits > 10 are now case insensitive.
 #                    added: 2swap d= sub$
 #                    changed: left$ and right$ call sub$, ?number uses (fixed) number
+# 0.60f  20190831 ls fixed: wrong number output when outputting a number with only msb set (nlimit+1)
+#                    changed (already in a previous version): executing save-system and restore without file name write to/read from $sources directory
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
 #     include: max line length in source files isn't checked against TIBSIZE
-#     number out breaks with nlimit+1, but only in decimal, not in hex or binary. nlimit and nlimit+2 are fine.
 #     env: without name abort with "invalid variable name"
 #     see: doesn't look into included source files
 
@@ -1139,7 +1140,8 @@ minus()  {
 revealheader "abs"
 code abs abs
 abs()  {
-   tos=${tos#-}
+   (( tos < 0 )) && (( tos *= -1 ))
+#   tos=${tos#-}
 }
 
 
@@ -1450,7 +1452,9 @@ hash() {
    local radix=${m[base+1]}
    r[++rp]=$tos
    ((r[++rp]=s[sp]/radix))
-   ((tos=(((s[sp--]%radix)+radix)%radix)+48))
+   ((tos=s[sp--]%radix))
+   ((tos<0)) && ((tos*=-1))
+   ((tos+=48))
    ((tos>57)) && ((tos+=39))
    s[sp+1]=$((s[sp]+1))
    s[sp++]=$tos
