@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.61a"
+version="0.62"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -186,7 +186,8 @@ version="0.61a"
 #     env: without name abort with "invalid variable name"
 #     see: doesn't look into included source files
 #     /:  while modulo and divison of /mod and */mod are floored,  / isn't.
-
+# 0.62   20190909 ls added: !sourcepath complements sourcepath
+#                    changed: set working variables in compare to local
 
 # global variables:
 # ip           virtual machine instruction pointer
@@ -279,6 +280,7 @@ declare -i wc=0                  # word count
 declare -i state=0               # compiler/interpreter switch
 declare -i catchframe=0          # pointer to latest catch frame, or 0
 
+sources="."                      # unless overwritten from .bashforthrc or !sourcepath
 
 
 # ---- bitmasks ------------------------------------------------------------
@@ -481,7 +483,6 @@ unnest() {
 # --------------------------- constants, variables ---------------------------
 # ----------------------------------------------------------------------------
 
-: "${sources:=.}"
 msb=1; until ((msb<0)); do ((msb<<=1)); done
 
 
@@ -2101,9 +2102,9 @@ compare1() {
 revealheader "compare"
 code compare compare
 compare() {             # n2 in tos
-   dest=${s[sp--]}
-   temp=${s[sp--]}
-   source=${s[sp--]}
+   local dest=${s[sp--]}
+   local temp=${s[sp--]}
+   local source=${s[sp--]}
    if [[ "$temp" = "$tos" ]]; then
       compare1
    else
@@ -3042,6 +3043,17 @@ code sourcepath sourcepath
 sourcepath()  {
    ss[++ssp]="$stos"
    stos="$sources/"
+}
+
+revealheader "!sourcepath"
+code storesourcepath storesourcepath
+storesourcepath()  {
+   if ((!ssp)); then
+      tos=-65; throw
+   fi
+   sources="$stos"
+   stos="${ss[ssp]}"
+   ((ssp--))
 }
 
 
