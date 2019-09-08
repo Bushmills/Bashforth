@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.62"
+version="0.63"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -180,14 +180,16 @@ version="0.62"
 #                    changed (already in a previous version): executing save-system and restore without file name write to/read from $sources directory
 # 0.61   20190831 ls functionally reverted to 0.60f, undoing changes to floored modulo and division, causing more damage than benefits
 # 0.61a  20190831 ls fixed: (s") bug from 0.57a again, seems to have reinstroduced when reverting.
+# 0.62   20190909 ls added: !sourcepath complements sourcepath
+#                    changed: set working variables in compare to local
+# 0.63   20190909 ls changed: words attempts to break lines
+#
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
 #     include: max line length in source files isn't checked against TIBSIZE
 #     env: without name abort with "invalid variable name"
 #     see: doesn't look into included source files
 #     /:  while modulo and divison of /mod and */mod are floored,  / isn't.
-# 0.62   20190909 ls added: !sourcepath complements sourcepath
-#                    changed: set working variables in compare to local
 
 # global variables:
 # ip           virtual machine instruction pointer
@@ -1880,8 +1882,18 @@ locate() {
 revealheader "words"
 code words words
 words() {
+   (( COLUMNS )) || clear                                         # initialize COLUMNS is necessary
+   local out=0
+   local len
    for ((i=wc; i--;)); do
-      printf '%s' "${h[i]}  "
+      len=$(( ${#h[i]}+2 ))
+      (( out += len ))
+      if (( out >= COLUMNS )); then
+         printf '\n%s' "${h[i]}  "
+         out=$len
+      else
+         printf '%s' "${h[i]}  "
+      fi
    done
 }
 
