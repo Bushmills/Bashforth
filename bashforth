@@ -5,7 +5,7 @@ set -u
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
 
 
-version="0.63"
+version="0.63a"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -183,6 +183,7 @@ version="0.63"
 # 0.62   20190909 ls added: !sourcepath complements sourcepath
 #                    changed: set working variables in compare to local
 # 0.63   20190909 ls changed: words attempts to break lines
+# 0.63a  20201121 ls fixed: exposed one superfluous "epoche" header 
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
@@ -3668,7 +3669,6 @@ epoche() {
 else
 
 # ( -- n ) returns seconds since 1/1/1970
-revealheader "epoche"
 code epoche epoche
 epoche() {
    s[++sp]=$tos
