@@ -2479,7 +2479,7 @@ done
 
 
 
-throw[1]="aborted"
+throw[1]="terminated"
 throw[2]="aborted"
 throw[3]="stack overflow"
 throw[4]="stack underflow"
@@ -2518,6 +2518,7 @@ throw[65]="string stack underflow"
 # throw without catch frame - top level error handler
 code exception exception
 exception() {
+   (( $tos == -1 )) && exit				# exception one terminates interpreter. other exceptions are dealt with within
    local message="caught $tos"
    ((tos<0)) && message="${throw[-tos]:-$message}"
    printf '%s\n' "$message"
@@ -3702,16 +3703,24 @@ commandline() {
    s[++sp]=$tos
    tos=0                                  # assume no command line
    if [[ $COMMANDLINE ]]; then
-      s[++sp]="$COMMANDLINE"              # unless one received
+      s[++sp]="nop $COMMANDLINE"          # unless one received
       ((m[in+1]=tos=tib+1))               # destination, dest becomes input buffer
       unpack                              # convert string to chars
-      m[tos+tib+1]=255                    # end of line delimiter
+      m[tos+tib+1]=255                    # end of line delimiter at end of buffer works
       unset COMMANDLINE                   # execute only once
       tos=-1                              # indicate "commandline found"
    fi
 }
 
-
+# not fully working.
+# idea is to leave interpreter upon executing from command line, and especially in case of an error trapped.
+# added signal -1 to terminated interpreter, when thrown.
+# this actually terminated after processing command line has completed, but if error is caught on execution,
+# exception handler will remain in bashforth and not terminate it.
+colon interpretcommandline	\
+   $tick $interpret $catch	\
+   $minone $or $throw 
+# to remain in interpreter after commandline execution, execute "warm" as last word.
 
 revealheader "cold"
 boot=$dp; colon cold \
@@ -3720,7 +3729,7 @@ boot=$dp; colon cold \
    $decimal          \
    $commandline      \
    $branch0 4        \
-      $interpret     \
+     $interpretcommandline\
    $branch 2         \
       $hello         \
    $prompt           \
