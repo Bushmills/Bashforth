@@ -1078,6 +1078,155 @@ j() {
 }
 
 
+# -----------------------------------------------------------------------------
+# ------------------------------- catch / throw -------------------------------
+# -----------------------------------------------------------------------------
+
+
+
+throw[1]="terminated"
+throw[2]="aborted"
+throw[3]="stack overflow"
+throw[4]="stack underflow"
+throw[5]="return stack overflow"
+throw[6]="return stack underflow"
+throw[7]="do loops nested too deeply"
+throw[8]="dictionary overflow"
+throw[9]="invalid memory address"
+throw[10]="division by zero"
+throw[11]="result out of range"
+throw[12]="argument type mismatch"
+throw[13]=" not found"
+throw[14]="use only during compilation"
+throw[15]="invalid forget"
+throw[16]="attempt to use zero-length string as name"
+throw[17]="pictured numeric ouput string overflow"
+throw[18]="pictured numeric ouput string overflow"
+throw[19]="word name too long"
+throw[20]="write to a read-only location"
+throw[21]="unsupported operation"
+throw[22]="unstructured"
+throw[23]="address alignment exception"
+throw[24]="invalid numeric argument"
+throw[25]="return stack imbalance"
+throw[26]="loop parameters unavailable"
+throw[27]="invalid recursion"
+throw[28]="user interrupt"
+throw[29]="compiler nesting"
+throw[30]="obsolescent feature"
+throw[31]=">BODY used on non-CREATEd definition"
+throw[32]="invalid name argument"
+throw[38]="file not found"
+throw[65]="string stack underflow"
+
+
+# throw without catch frame - top level error handler
+code exception exception
+exception() {
+   (( $tos == -1 )) && exit				# exception one terminates interpreter. other exceptions are dealt with within
+   local message="caught $tos"
+   ((tos<0)) && message="${throw[-tos]:-$message}"
+   printf '%s\n' "$message"
+   if ((proceed)); then
+      ip=$proceed
+      start
+   fi
+}
+
+
+
+
+code throw0 throw0
+throw0() {
+   catchframe=${r[rp]}
+   sp=${r[--rp]}
+   ip=${r[--rp]}
+   tos=0
+   (( rp-- ))
+}
+brthrow0=$throw0
+
+
+
+# ( a -- n ) part of catch / throw exception handling mechanism
+revealheader "catch"
+code catch catch
+catch() {
+   r[++rp]=$ip
+   r[++rp]=$sp
+   r[++rp]=$catchframe
+   catchframe=$rp
+   r[++rp]=$brthrow0
+   execute
+}
+
+
+# ( n -- ) part of catch / throw exception handling mechanism
+revealheader "throw"
+defer throw
+
+code realthrow realthrow
+realthrow() {
+   if ((tos)); then
+      if ((catchframe)); then
+         rp=$catchframe
+         catchframe=${r[rp--]}
+         sp=${r[rp--]}
+         ip=${r[rp--]}
+      else
+         proceed=$warm
+         exception
+         echo continue
+      fi
+   else
+      tos=${s[sp--]}
+   fi
+   echo "--- realthrow [$tos] ---"
+   (( tos )) && {
+     echo "something fishy with 0 throw"
+     proceed=$warm
+     exception
+   }
+}
+
+# when primitives throw exceptions, they can't easily execute
+# a deferred word. Current workaround is to let the code entry
+# into throwing check whether it is the deferred handler, and
+# flowcontrols accordingly.
+# Reason for two different handlings: when interpreting command line,
+# errors need to terminate rather than warmstart the interpreter.
+code codethrow codethrow
+codethrow() {
+   : "${tos:=0}"
+   if [[ ${m[throw+1]} == $codethrow ]]; then
+      printf '\n'
+      proceed=0
+      (( tos )) && {
+         exception
+      }
+      exit "${tos#-}"
+   fi
+   realthrow
+}
+m[throw+1]="$codethrow"
+
+
+
+# ( -- ) throw exception -2
+revealheader "abort"
+colon abort            $lit  -2 $throw
+
+colon stackunderflow   $lit  -4 $throw
+colon invalidaddr      $lit  -9 $throw
+colon notfound         $lit -13 $throw
+colon compileonly      $lit -14 $throw
+colon unsupported      $lit -21 $throw
+colon unstruc          $lit -22 $throw
+colon invalidarg       $lit -24 $throw
+colon nolooppars       $lit -26 $throw
+colon filenotfound     $lit -38 $throw
+
+
 
 
 # -----------------------------------------------------------------------------
@@ -1174,7 +1323,7 @@ power()  {
 
 divzero() {
    tos=-10
-   throw
+   codethrow
 }
 
 
@@ -2232,7 +2381,7 @@ revealheader "pop$"
 code popstr popstr
 popstr() {
    if ((!ssp)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    s[++sp]="$tos"
    tos=$dp
@@ -2248,7 +2397,7 @@ revealheader "type$"
 code typestr typestr
 typestr() {
    if ((!ssp)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    printf '%s' "$stos"
    stos="${ss[ssp]}"
@@ -2303,7 +2452,7 @@ revealheader "drop$"
 code dropstr dropstr
 dropstr() {
    if ((!ssp)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    stos="${ss[ssp]}"
    ss[ssp--]=""
@@ -2317,7 +2466,7 @@ revealheader "swap$"
 code swapstr swapstr
 swapstr() {
    if ((ssp<2)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    temp="$stos"
    stos="${ss[ssp]}"
@@ -2332,7 +2481,7 @@ revealheader "over$"
 code overstr overstr
 overstr() {
    if ((ssp<2)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    ss[++ssp]="$stos"
    stos="${ss[ssp-1]}"
@@ -2346,7 +2495,7 @@ revealheader "nip$"
 code nipstr nipstr
 nipstr() {
    if ((ssp<2)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    ((ssp--))
 }
@@ -2359,7 +2508,7 @@ revealheader "rot$"
 code rotstr rotstr
 rotstr() {
    if ((ssp<3)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    temp="${ss[ssp]}"
    ss[ssp]="$stos"
@@ -2375,7 +2524,7 @@ revealheader "append$"
 code appendstr appendstr
 appendstr() {
    if ((ssp<2)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    stos="${ss[ssp--]}$stos"
 }
@@ -2386,7 +2535,7 @@ revealheader "sub$"
 code substr substr
 substr()  {
    if ((!ssp)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    temp=${s[sp--]}
    stos="${stos:$temp:$tos}"
@@ -2471,126 +2620,6 @@ done
 }
 
 
-
-
-# -----------------------------------------------------------------------------
-# ------------------------------- catch / throw -------------------------------
-# -----------------------------------------------------------------------------
-
-
-
-throw[1]="terminated"
-throw[2]="aborted"
-throw[3]="stack overflow"
-throw[4]="stack underflow"
-throw[5]="return stack overflow"
-throw[6]="return stack underflow"
-throw[7]="do loops nested too deeply"
-throw[8]="dictionary overflow"
-throw[9]="invalid memory address"
-throw[10]="division by zero"
-throw[11]="result out of range"
-throw[12]="argument type mismatch"
-throw[13]=" not found"
-throw[14]="use only during compilation"
-throw[15]="invalid forget"
-throw[16]="attempt to use zero-length string as name"
-throw[17]="pictured numeric ouput string overflow"
-throw[18]="pictured numeric ouput string overflow"
-throw[19]="word name too long"
-throw[20]="write to a read-only location"
-throw[21]="unsupported operation"
-throw[22]="unstructured"
-throw[23]="address alignment exception"
-throw[24]="invalid numeric argument"
-throw[25]="return stack imbalance"
-throw[26]="loop parameters unavailable"
-throw[27]="invalid recursion"
-throw[28]="user interrupt"
-throw[29]="compiler nesting"
-throw[30]="obsolescent feature"
-throw[31]=">BODY used on non-CREATEd definition"
-throw[32]="invalid name argument"
-throw[38]="file not found"
-throw[65]="string stack underflow"
-
-
-# throw without catch frame - top level error handler
-code exception exception
-exception() {
-   (( $tos == -1 )) && exit				# exception one terminates interpreter. other exceptions are dealt with within
-   local message="caught $tos"
-   ((tos<0)) && message="${throw[-tos]:-$message}"
-   printf '%s\n' "$message"
-   if ((proceed)); then
-      ip=$proceed
-      start
-   fi
-}
-
-
-
-
-code throw0 throw0
-throw0() {
-   catchframe=${r[rp]}
-   sp=${r[--rp]}
-   ip=${r[--rp]}
-   tos=0
-   (( rp-- ))
-}
-brthrow0=$throw0
-
-
-
-# ( a -- n ) part of catch / throw exception handling mechanism
-revealheader "catch"
-code catch catch
-catch() {
-   r[++rp]=$ip
-   r[++rp]=$sp
-   r[++rp]=$catchframe
-   catchframe=$rp
-   r[++rp]=$brthrow0
-   execute
-}
-
-
-# ( n -- ) part of catch / throw exception handling mechanism
-revealheader "throw"
-code throw throw
-throw() {
-   if ((tos)); then
-      if ((catchframe)); then
-         rp=$catchframe
-         catchframe=${r[rp--]}
-         sp=${r[rp--]}
-         ip=${r[rp--]}
-      else
-         proceed=$warm
-         exception
-         echo continue
-      fi
-   else
-      tos=${s[sp--]}
-   fi
-}
-
-
-
-# ( -- ) throw exception -2
-revealheader "abort"
-colon abort            $lit  -2 $throw
-
-colon stackunderflow   $lit  -4 $throw
-colon invalidaddr      $lit  -9 $throw
-colon notfound         $lit -13 $throw
-colon compileonly      $lit -14 $throw
-colon unsupported      $lit -21 $throw
-colon unstruc          $lit -22 $throw
-colon invalidarg       $lit -24 $throw
-colon nolooppars       $lit -26 $throw
-colon filenotfound     $lit -38 $throw
 
 
 
@@ -3029,7 +3058,7 @@ from() {
       done < $tos
       tos=$i
    else
-     tos=-38; throw
+     tos=-38; codethrow
    fi
 }
 
@@ -3063,7 +3092,7 @@ revealheader "!sourcepath"
 code storesourcepath storesourcepath
 storesourcepath()  {
    if ((!ssp)); then
-      tos=-65; throw
+      tos=-65; codethrow
    fi
    sources="$stos"
    stos="${ss[ssp]}"
@@ -3712,15 +3741,10 @@ commandline() {
    fi
 }
 
-# not fully working.
-# idea is to leave interpreter upon executing from command line, and especially in case of an error trapped.
-# added signal -1 to terminated interpreter, when thrown.
-# this actually terminated after processing command line has completed, but if error is caught on execution,
-# exception handler will remain in bashforth and not terminate it.
-colon interpretcommandline	\
-   $tick $interpret $catch	\
-   $minone $or $throw 
-# to remain in interpreter after commandline execution, execute "warm" as last word.
+code setrealthrow setrealthrow
+setrealthrow()  {
+   m[throw+1]="$realthrow"
+}
 
 revealheader "cold"
 boot=$dp; colon cold \
@@ -3728,10 +3752,11 @@ boot=$dp; colon cold \
    $init_other       \
    $decimal          \
    $commandline      \
-   $branch0 4        \
-     $interpretcommandline\
+   $branch0 8        \
+     $tick $interpret $catch $throw $bye \
    $branch 2         \
       $hello         \
+   $setrealthrow     \
    $prompt           \
    $query            \
    $interpret        \
