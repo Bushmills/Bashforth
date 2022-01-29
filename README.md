@@ -7,5 +7,5 @@ exception handling. It also provides an extra string stack, along with a set of 
 
 Those interested in bashforth might like [yoda](https://github.com/Bushmills/yoda) which does away with the virtual machine
 and compiles directly to bash functions. As consequence can a substantial performance difference be realised (yoda is faster by a factor of somewhere between 30 and 50 times).  
-At this point yoda has progressed enough that I can say that now yoda is the better bashforth, being more potent while it's still than bashforth.  And it supports automatically including libraries.
+At this point yoda has progressed enough that I can say that now yoda is the better bashforth, being more potent while it's still smaller than bashforth.  And it supports automatically including libraries.
 
