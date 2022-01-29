@@ -6,5 +6,7 @@ Bashforth lacks floating point support and vocabularies, but comes with essentia
 exception handling. It also provides an extra string stack, along with a set of words, operating on string stack.
 
 Those interested in bashforth might like [yoda](https://github.com/Bushmills/yoda) which does away with the virtual machine
-and compiles directly to bash functions. As consequence can a substantial performance difference be realised (yoda is faster by a factor of somewhere between 30 and 50 times).
+and compiles directly to bash functions. As consequence can a substantial performance difference be realised (yoda is faster by a factor of somewhere between 30 and 50 times).  
+At this point yoda has progressed enough that I can say that now yoda is the better bashforth.
+
 
